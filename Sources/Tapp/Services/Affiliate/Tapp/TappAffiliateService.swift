@@ -1,7 +1,7 @@
 import Foundation
 import TappNetworking
 
-enum ResolvedURLError: Error {
+public enum ResolvedURLError: Error {
     case cannotResolveURL
     case cannotResolveDeepLink
 }
