@@ -1,7 +1,7 @@
 import Foundation
 import TappNetworking
 
-enum AffiliateServiceError: Error {
+public enum AffiliateServiceError: Error {
     case missingToken
 }
 
