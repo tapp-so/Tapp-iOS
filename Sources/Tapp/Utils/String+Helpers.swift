@@ -8,11 +8,11 @@
 import Foundation
 
 extension String {
-    static var empty: String {
+    public static var empty: String {
         return ""
     }
 
-    static var emptyNSString: NSString {
+    public static var emptyNSString: NSString {
         return String.empty as NSString
     }
 }
