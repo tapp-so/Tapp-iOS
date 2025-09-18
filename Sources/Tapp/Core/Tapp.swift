@@ -4,7 +4,7 @@ import TappNetworking
 @objc
 public class Tapp: NSObject {
 
-    static let single: Tapp = .init()
+    public static let single: Tapp = .init()
 
     init(dependencies: Dependencies = .live, dispatchQueue: DispatchQueue = DispatchQueue(label: "com.tapp.concurrentDispatchQueue")) {
         self.dependencies = dependencies
