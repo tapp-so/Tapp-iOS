@@ -1,0 +1,15 @@
+{
+  "originHash" : "50d77345f846479fda63dc1b4f807ffe3b9af602117c0b030a5f041ec6f8bb2b",
+  "pins" : [
+    {
+      "identity" : "tapp-networking-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tapp-so/Tapp-Networking-iOS.git",
+      "state" : {
+        "revision" : "c1357165046234034ed04f0066ca59b73767406f",
+        "version" : "1.0.7"
+      }
+    }
+  ],
+  "version" : 3
+}
