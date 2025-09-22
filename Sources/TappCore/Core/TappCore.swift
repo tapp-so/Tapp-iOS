@@ -2,13 +2,13 @@ import Foundation
 import TappNetworking
 
 @objc
-public class Tapp: NSObject {
+public class TappCore: NSObject {
 
-    public static var instance: Tapp {
+    public static var instance: TappCore {
         return single
     }
 
-    static let single: Tapp = .init()
+    static let single: TappCore = .init()
 
     init(dependencies: Dependencies = .live, dispatchQueue: DispatchQueue = DispatchQueue(label: "com.tapp.concurrentDispatchQueue")) {
         self.dependencies = dependencies
@@ -146,7 +146,7 @@ public class Tapp: NSObject {
     }
 }
 
-internal extension Tapp {
+internal extension TappCore {
     func url(config: AffiliateURLConfiguration,
                     completion: GenerateURLCompletion?) {
         initializeEngine { [weak self] result in
@@ -313,7 +313,7 @@ internal extension Tapp {
     }
 }
 
-extension Tapp {
+extension TappCore {
     var affiliateService: AffiliateServiceProtocol? {
         guard let config = dependencies.keychainHelper.config else { return nil }
 
@@ -328,7 +328,7 @@ extension Tapp {
     }
 }
 
-extension Tapp: DeferredLinkDelegate {
+extension TappCore: DeferredLinkDelegate {
     public func didReceiveDeferredLink(_ url: URL) {
         initializeEngine { [weak self] result in
             switch result {
