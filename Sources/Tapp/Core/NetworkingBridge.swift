@@ -9,5 +9,4 @@ public typealias EventAction = TappNetworking.EventAction
 public typealias EventConfig = TappNetworking.EventConfig
 public typealias TappError = TappNetworking.TappError
 public typealias TappConfiguration = TappNetworking.TappConfiguration
-
 public typealias Environment = TappNetworking.Environment
