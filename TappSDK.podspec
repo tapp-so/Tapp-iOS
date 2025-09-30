@@ -1,11 +1,11 @@
 Pod::Spec.new do |spec|
   spec.name          = 'TappSDK'
-  spec.version       = '1.0.82'
+  spec.version       = '1.0.83'
   spec.license       = { :type => 'BSD' }
   spec.homepage      = 'https://github.com/tapp-so/Tapp-iOS'
   spec.authors       = { 'Alex Stergiou' => 'alex.stergiou@hotmail.com' }
   spec.summary       = 'TappSDK.'
-  spec.source        = { :git => 'https://github.com/tapp-so/Tapp-iOS.git', :tag => '1.0.82' }
+  spec.source        = { :git => 'https://github.com/tapp-so/Tapp-iOS.git', :tag => '1.0.83' }
   spec.module_name   = 'TappSDK'
   spec.swift_version = '5.7'
   spec.license       = { :type => 'MIT', :file => 'LICENSE.md' }
@@ -18,5 +18,5 @@ Pod::Spec.new do |spec|
   spec.framework      = 'SystemConfiguration'
   spec.ios.framework  = 'Foundation'
 
-    spec.dependency 'Tapp-Networking'
+  spec.dependency 'Tapp-Networking'
 end
