@@ -144,6 +144,13 @@ public class Tapp: NSObject {
     func setupDependencies() {
         //dependencies.services.adjustService.set(deferredLinkDelegate: self)
     }
+
+    private lazy var overridenService: AffiliateServiceProtocol? = {
+        if let overrideProtocol = self as? AffiliateServiceOverrideProtocol {
+            return overrideProtocol.overrideService
+        }
+        return nil
+    }()
 }
 
 internal extension Tapp {
@@ -320,10 +327,8 @@ extension Tapp {
         switch config.affiliate {
         case .tapp:
             return dependencies.services.tappService
-        case .adjust:
-            return nil
-        case .appsflyer:
-            return nil
+        case .adjust, .appsflyer:
+            return overridenService
         }
     }
 }

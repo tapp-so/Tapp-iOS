@@ -13,3 +13,7 @@ public protocol AffiliateServiceProtocol {
     func handleCallback(with url: String, completion: ResolvedURLCompletion?)
     func handleEvent(eventId: String, authToken: String?)
 }
+
+public protocol AffiliateServiceOverrideProtocol {
+    var overrideService: AffiliateServiceProtocol { get }
+}
