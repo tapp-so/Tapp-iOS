@@ -20,8 +20,25 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
     }
 
     func initialize(environment: Environment, completion: VoidCompletion?) {
-        Logger.logInfo("Initializing Tapp... Not implemented")
-        completion?(.success(()))
+        guard let tappToken = keychainHelper.config?.tappToken else {
+            completion?(Result.failure(TappServiceError.invalidData))
+            return
+        }
+        let fingerprint = Fingerprint.generate(tappToken: tappToken)
+        let endpoint = TappEndpoint.fingerpint(fingerprint)
+        guard let request = endpoint.request else {
+            completion?(Result.failure(TappServiceError.invalidRequest))
+            return
+        }
+
+        networkClient.executeAuthenticated(request: request) { result in
+            switch result {
+                case .success:
+                completion?(.success(()))
+            case .failure:
+                completion?(.failure(TappServiceError.invalidRequest))
+            }
+        }
     }
 
     func handleCallback(with url: String, completion: ResolvedURLCompletion?) {

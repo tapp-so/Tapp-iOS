@@ -5,16 +5,51 @@
 import Foundation
 import TappNetworking
 
+public enum APIPath: String {
+    case id
+    case influencer
+    case add
+    case deeplink
+    case secrets
+    case event
+    case linkData
+    case fingerprint
+
+    public var prefixInfluencer: String {
+        return rawValue.prefixInfluencer
+    }
+
+    public var prefixAdd: String {
+        return rawValue.prefixAdd
+    }
+}
+
+extension String {
+
+    public var prefixInfluencer: String {
+        return prefix(APIPath.influencer.rawValue)
+    }
+
+    public var prefixAdd: String {
+        return prefix(APIPath.add.rawValue)
+    }
+
+    public func prefix(_ value: String) -> String {
+        return "\(value)/" + self
+    }
+}
+
 enum TappEndpoint: Endpoint {
     case generateURL(CreateAffiliateURLRequest)
     case deeplink(ImpressionRequest)
     case secrets(SecretsRequest)
     case tappEvent(TappEventRequest)
     case linkData(TappLinkDataRequest)
+    case fingerpint(Fingerprint)
 
     var httpMethod: HTTPMethod {
         switch self {
-        case .generateURL, .deeplink, .secrets, .tappEvent, .linkData:
+        case .generateURL, .deeplink, .secrets, .tappEvent, .linkData, .fingerpint:
             return .post
         }
     }
@@ -31,6 +66,8 @@ enum TappEndpoint: Endpoint {
             return APIPath.event.rawValue
         case .linkData:
             return APIPath.linkData.rawValue
+        case .fingerpint:
+            return APIPath.fingerprint.rawValue
         }
     }
 
@@ -45,6 +82,8 @@ enum TappEndpoint: Endpoint {
         case .tappEvent(let requestData):
             return request(encodable: requestData)
         case .linkData(let requestData):
+            return request(encodable: requestData)
+        case .fingerpint(let requestData):
             return request(encodable: requestData)
         }
     }
