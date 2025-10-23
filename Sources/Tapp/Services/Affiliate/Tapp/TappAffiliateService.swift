@@ -6,6 +6,8 @@ public enum ResolvedURLError: Error {
     case cannotResolveDeepLink
 }
 
+typealias FingerprintCompletion = (_ result: Result<FingerprintResponse, Error>) -> Void
+
 protocol TappAffiliateServiceProtocol: AffiliateServiceProtocol, TappServiceProtocol {}
 
 final class TappAffiliateService: TappAffiliateServiceProtocol {
@@ -25,7 +27,19 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
             return
         }
 
-        let fingerprint = Fingerprint.generate(tappToken: tappToken, testConfiguration: fingerprintTestConfiguration)
+        fingerprint(tappToken: tappToken, testConfiguration: fingerprintTestConfiguration) { result in
+            switch result {
+            case .success(let response):
+                print(response)
+                completion?(Result.success(()))
+            case .failure(let error):
+                completion?(Result.failure(error))
+            }
+        }
+    }
+
+    private func fingerprint(tappToken: String, testConfiguration: FingerprintTestConfiguration?, completion: FingerprintCompletion?) {
+        let fingerprint = Fingerprint.generate(tappToken: tappToken, testConfiguration: testConfiguration)
         let endpoint = TappEndpoint.fingerpint(fingerprint)
         guard let request = endpoint.request else {
             completion?(Result.failure(TappServiceError.invalidRequest))
@@ -35,8 +49,14 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
         networkClient.executeAuthenticated(request: request) { [weak self] result in
             self?.isInitialized = true
             switch result {
-                case .success:
-                completion?(.success(()))
+                case .success(let data):
+                let decoder = JSONDecoder()
+                do {
+                    let response = try decoder.decode(FingerprintResponse.self, from: data)
+                    completion?(Result.success(response))
+                } catch {
+                    completion?(Result.failure(error))
+                }
             case .failure:
                 completion?(.failure(TappServiceError.invalidRequest))
             }
