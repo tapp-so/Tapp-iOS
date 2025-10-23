@@ -8,6 +8,7 @@ public enum AffiliateServiceError: Error {
 public protocol AffiliateServiceProtocol {
     var isInitialized: Bool { get }
     func initialize(environment: Environment,
+                    fingerprintTestConfiguration: FingerprintTestConfiguration?,
                     completion: VoidCompletion?)
 
     func handleCallback(with url: String, completion: ResolvedURLCompletion?)

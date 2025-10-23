@@ -24,13 +24,15 @@ public class Tapp: NSObject {
     fileprivate let dispatchQueue: DispatchQueue
     fileprivate var isFirstSession: Bool
     internal weak var delegate: TappDelegate?
+    fileprivate var fingerprintTestConfiguration: FingerprintTestConfiguration?
 
     // MARK: - Configuration
     // AppDelegate: Called upon didFinishLaunching
 
     @objc
-    public static func start(config: TappConfiguration, delegate: TappDelegate?) {
+    public static func start(config: TappConfiguration, fingerprintTestConfiguration: FingerprintTestConfiguration? = nil, delegate: TappDelegate?) {
         single.delegate = delegate
+        single.fingerprintTestConfiguration = fingerprintTestConfiguration
 
         if let storedConfig = single.dependencies.keychainHelper.config {
             if storedConfig != config {
@@ -196,7 +198,7 @@ internal extension Tapp {
                 guard let self else { return }
                 switch result {
                 case .success:
-                    self.initializeAffiliateService { result in
+                    self.initializeAffiliateService(fingerprintTestConfiguration: fingerprintTestConfiguration) { result in
                         switch result {
                         case .success:
                             self.completeInitializationsWithSuccess()
@@ -250,7 +252,7 @@ internal extension Tapp {
         }
     }
 
-    func initializeAffiliateService(completion: VoidCompletion?) {
+    func initializeAffiliateService(fingerprintTestConfiguration: FingerprintTestConfiguration?, completion: VoidCompletion?) {
         guard let service = affiliateService else {
             let error = TappError.missingParameters(details: "Affiliate service not configured")
             Logger.logError(error)
@@ -271,7 +273,7 @@ internal extension Tapp {
             return
         }
 
-        service.initialize(environment: storedConfig.env) { [weak self] result in
+        service.initialize(environment: storedConfig.env, fingerprintTestConfiguration: fingerprintTestConfiguration) { [weak self] result in
             switch result {
             case .success:
                 self?.setProcessedReferralEngine()

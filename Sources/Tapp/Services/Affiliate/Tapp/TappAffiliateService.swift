@@ -19,12 +19,13 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
         self.networkClient = networkClient
     }
 
-    func initialize(environment: Environment, completion: VoidCompletion?) {
+    func initialize(environment: Environment, fingerprintTestConfiguration: FingerprintTestConfiguration?, completion: VoidCompletion?) {
         guard let tappToken = keychainHelper.config?.tappToken else {
             completion?(Result.failure(TappServiceError.invalidData))
             return
         }
-        let fingerprint = Fingerprint.generate(tappToken: tappToken)
+
+        let fingerprint = Fingerprint.generate(tappToken: tappToken, testConfiguration: fingerprintTestConfiguration)
         let endpoint = TappEndpoint.fingerpint(fingerprint)
         guard let request = endpoint.request else {
             completion?(Result.failure(TappServiceError.invalidRequest))

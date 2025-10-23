@@ -6,7 +6,21 @@ import UIKit
 import AppKit
 #endif
 
+@objc
+public final class FingerprintTestConfiguration: NSObject {
+    let isTestingFingerprints: Bool
+    let fingerprintOperationResult: Bool
+
+    @objc
+    public init(isTestingFingerprints: Bool, fingerprintOperationResult: Bool) {
+        self.isTestingFingerprints = isTestingFingerprints
+        self.fingerprintOperationResult = fingerprintOperationResult
+        super.init()
+    }
+}
+
 struct Fingerprint: Codable {
+    let fp: Bool?
     let tappToken: String
     let screenResolution: String
     let language: String
@@ -21,7 +35,13 @@ struct Fingerprint: Codable {
     let userAgent: String
     let timestamp: Int64
 
-    static func generate(tappToken: String) -> Fingerprint {
+    static func generate(tappToken: String, testConfiguration: FingerprintTestConfiguration?) -> Fingerprint {
+
+        var isSuccess: Bool?
+        if let testConfiguration, testConfiguration.isTestingFingerprints {
+            isSuccess = testConfiguration.fingerprintOperationResult
+        }
+
         let screenResolution: String = {
             #if os(iOS)
             let screen = UIScreen.main
@@ -67,7 +87,8 @@ struct Fingerprint: Codable {
 
         let timestamp = Int64(Date().timeIntervalSince1970 * 1000)
 
-        return Fingerprint(tappToken: tappToken,
+        return Fingerprint(fp: isSuccess,
+                           tappToken: tappToken,
                            screenResolution: screenResolution,
                            language: language,
                            region: region,
