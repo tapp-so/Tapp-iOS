@@ -10,7 +10,7 @@ protocol TappAffiliateServiceProtocol: AffiliateServiceProtocol, TappServiceProt
 
 final class TappAffiliateService: TappAffiliateServiceProtocol {
 
-    let isInitialized: Bool = true
+    var isInitialized: Bool = false
     private let keychainHelper: KeychainHelperProtocol
     private let networkClient: NetworkClientProtocol
 
@@ -32,7 +32,8 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
             return
         }
 
-        networkClient.executeAuthenticated(request: request) { result in
+        networkClient.executeAuthenticated(request: request) { [weak self] result in
+            self?.isInitialized = true
             switch result {
                 case .success:
                 completion?(.success(()))
