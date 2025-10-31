@@ -1,5 +1,6 @@
 import Foundation
 import TappNetworking
+import UIKit
 
 public enum ResolvedURLError: Error {
     case cannotResolveURL
@@ -168,7 +169,7 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
     }
 
     func shouldProcess(url: URL) -> Bool {
-        return url.param(for: AdjustURLParamKey.token.rawValue) != nil
+        return url.isTappURL
     }
 
     func fetchLinkData(for url: URL, completion: LinkDataDTOCompletion?) {
@@ -230,4 +231,23 @@ private extension TappAffiliateService {
 
 private enum AdjustURLParamKey: String {
     case token = "adj_t"
+}
+
+extension URL {
+    var host: String? {
+        let components = URLComponents(string: absoluteString)
+        if let host = components?.host {
+            let paths = host.split(separator: ".")
+            let lastTwoItems = paths.suffix(2)
+            return lastTwoItems.joined(separator: ".")
+        }
+        return nil
+    }
+
+    var isTappURL: Bool {
+        guard let host else {
+            return false
+        }
+        return host == "tapp.so"
+    }
 }

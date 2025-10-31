@@ -85,7 +85,8 @@ public class Tapp: NSObject {
     //MARK: - Deep Links (App Already installed)
     @objc
     public static func shouldProcess(url: URL) -> Bool {
-        return single.dependencies.services.tappService.shouldProcess(url: url)
+        guard let service = single.affiliateService else { return false }
+        return service.shouldProcess(url: url)
     }
 
     public static func fetchLinkData(for url: URL, completion: LinkDataCompletion?) {
