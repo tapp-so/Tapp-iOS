@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "0FC565FF-D59F-451B-8304-CF2CC204E601",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "TappTests",
+        "name" : "TappTests"
+      }
+    }
+  ],
+  "version" : 1
+}

@@ -33,7 +33,7 @@ public final class TappDeferredLinkData: NSObject {
     }
 }
 
-struct TappDeferredLinkDataDTO: Codable {
+struct TappDeferredLinkDataDTO: Codable, Equatable {
     let tappURL: URL
     let attributedTappURL: URL
     let influencer: String

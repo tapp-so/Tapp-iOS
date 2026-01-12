@@ -24,24 +24,28 @@ public class Tapp: NSObject {
     fileprivate let dispatchQueue: DispatchQueue
     fileprivate var isFirstSession: Bool
     internal weak var delegate: TappDelegate?
-    fileprivate var fingerprintTestConfiguration: FingerprintTestConfiguration?
 
     // MARK: - Configuration
-    // AppDelegate: Called upon didFinishLaunching
+    // AppDelegate: Should be called upon didFinishLaunching
 
     @objc
-    public static func start(config: TappConfiguration, fingerprintTestConfiguration: FingerprintTestConfiguration? = nil, delegate: TappDelegate?) {
-        single.delegate = delegate
-        single.fingerprintTestConfiguration = fingerprintTestConfiguration
+    public static func start(config: TappConfiguration, delegate: TappDelegate?) {
+        single.start(config: config, delegate: delegate)
+    }
 
-        if let storedConfig = single.dependencies.keychainHelper.config {
-            if storedConfig != config {
-                single.dependencies.keychainHelper.save(configuration: config)
+    func start(config: TappConfiguration, delegate: TappDelegate?) {
+        self.delegate = delegate
+        self.dependencies.keychainHelper.set(bundleID: config.bundleID)
+        self.dependencies.keychainHelper.set(environment: config.env)
+
+        if let storedConfig = self.dependencies.keychainHelper.config {
+            if storedConfig.authToken != config.authToken || storedConfig.tappToken != config.tappToken {
+                self.dependencies.keychainHelper.save(configuration: config)
             }
         } else {
-            single.dependencies.keychainHelper.save(configuration: config)
+            self.dependencies.keychainHelper.save(configuration: config)
         }
-        single.initializeEngine(completion: nil)
+        self.initializeEngine(completion: nil)
     }
 
     // MARK: - Generate url
@@ -74,13 +78,18 @@ public class Tapp: NSObject {
     //For Tapp Events
     @objc
     public static func handleTappEvent(event: TappEvent) {
+        single.handleTappEvent(event: event)
+    }
+
+    func handleTappEvent(event: TappEvent) {
         guard event.eventAction.isValid else {
             Logger.logError(TappError.eventActionMissing)
             return
         }
 
-        single.dependencies.services.tappService.sendTappEvent(event: event, completion: nil)
+        dependencies.services.tappService.sendTappEvent(event: event, completion: nil)
     }
+
 
     //MARK: - Deep Links (App Already installed)
     @objc
@@ -90,18 +99,27 @@ public class Tapp: NSObject {
     }
 
     public static func fetchLinkData(for url: URL, completion: LinkDataCompletion?) {
+        single.internalFetchLinkData(for: url, completion: completion)
+    }
+
+    func internalFetchLinkData(for url: URL, completion: LinkDataCompletion?) {
         guard shouldProcess(url: url) else {
             completion?(Result.failure(TappServiceError.unprocessableEntity))
             return
         }
 
-        single.initializeEngine { result in
+        initializeEngine { [weak self] result in
+            guard let self else { return }
             switch result {
             case .success:
-                single.dependencies.services.tappService.fetchLinkData(for: url) { result in
+                self.dependencies.services.tappService.fetchLinkData(for: url) { result in
                     switch result {
                     case .success(let dto):
-                        completion?(Result.success(TappDeferredLinkData(dto: dto, isFirstSession: single.isFirstSession)))
+                        if let storedConfig = self.dependencies.keychainHelper.config {
+                            storedConfig.set(originURL: dto.tappURL)
+                            self.dependencies.keychainHelper.save(configuration: storedConfig)
+                        }
+                        completion?(Result.success(TappDeferredLinkData(dto: dto, isFirstSession: self.isFirstSession)))
                     case .failure(let error):
                         completion?(Result.failure(error))
                     }
@@ -145,7 +163,7 @@ public class Tapp: NSObject {
     }
 
     func setupDependencies() {
-        //dependencies.services.adjustService.set(deferredLinkDelegate: self)
+
     }
 
     private lazy var overridenService: AffiliateServiceProtocol? = {
@@ -198,8 +216,8 @@ internal extension Tapp {
             self.secretsDataTask = self.secrets(config: config) { [weak self] result in
                 guard let self else { return }
                 switch result {
-                case .success:
-                    self.initializeAffiliateService(fingerprintTestConfiguration: fingerprintTestConfiguration) { result in
+                case .success(let url):
+                    self.initializeAffiliateService(brandedURL: url) { result in
                         switch result {
                         case .success:
                             self.completeInitializationsWithSuccess()
@@ -227,16 +245,16 @@ internal extension Tapp {
         initializationCompletions.removeAll()
     }
 
-    func secrets(config: TappConfiguration, completion: VoidCompletion?) -> URLSessionDataTaskProtocol? {
+    func secrets(config: TappConfiguration, completion: ResolvedOptionalURLCompletion?) -> URLSessionDataTaskProtocol? {
         guard let storedConfig = dependencies.keychainHelper.config else {
             completion?(Result.failure(TappError.missingConfiguration))
             return nil
         }
 
-        guard storedConfig.appToken == nil else {
-            completion?(Result.success(()))
-            return nil
-        }
+//        guard storedConfig.appToken == nil else {
+//            completion?(Result.success(nil))
+//            return nil
+//        }
 
         return dependencies.services.tappService.secrets(affiliate: config.affiliate) { [unowned config, weak self] result in
             guard let self else { return }
@@ -244,7 +262,7 @@ internal extension Tapp {
             case .success(let response):
                 storedConfig.set(appToken: response.secret)
                 self.dependencies.keychainHelper.save(configuration: storedConfig)
-                completion?(.success(()))
+                completion?(.success(response.brandedURL)) //Fingerprint URL
             case .failure(let error):
                 let err = TappError.affiliateServiceError(affiliate: config.affiliate, underlyingError: error)
                 Logger.logError(err)
@@ -253,7 +271,7 @@ internal extension Tapp {
         }
     }
 
-    func initializeAffiliateService(fingerprintTestConfiguration: FingerprintTestConfiguration?, completion: VoidCompletion?) {
+    func initializeAffiliateService(brandedURL: URL?, completion: VoidCompletion?) {
         guard let service = affiliateService else {
             let error = TappError.missingParameters(details: "Affiliate service not configured")
             Logger.logError(error)
@@ -274,7 +292,7 @@ internal extension Tapp {
             return
         }
 
-        service.initialize(environment: storedConfig.env, fingerprintTestConfiguration: fingerprintTestConfiguration) { [weak self] result in
+        service.initialize(environment: storedConfig.env, brandedURL: brandedURL) { [weak self] result in
             switch result {
             case .success:
                 self?.setProcessedReferralEngine()
@@ -300,39 +318,44 @@ internal extension Tapp {
     func shouldProcess(url: URL) -> Bool {
         return dependencies.services.tappService.shouldProcess(url: url)
     }
-
-    func fetchLinkData(for url: URL, completion: LinkDataDTOCompletion?) {
-        guard shouldProcess(url: url) else {
-            completion?(Result.failure(TappServiceError.unprocessableEntity))
-            return
-        }
-
-        initializeEngine { [weak self] result in
-            switch result {
-            case .success:
-                if let storedConfig = self?.dependencies.keychainHelper.config {
-                    storedConfig.set(originURL: url)
-                    self?.dependencies.keychainHelper.save(configuration: storedConfig)
-                }
-                self?.dependencies.services.tappService.fetchLinkData(for: url, completion: completion)
-            case .failure(let error):
-                Logger.logError(error)
-                completion?(Result.failure(error))
-            }
-        }
-    }
+//
+//    func fetchLinkData(for url: URL, completion: LinkDataDTOCompletion?) {
+//        guard shouldProcess(url: url) else {
+//            completion?(Result.failure(TappServiceError.unprocessableEntity))
+//            return
+//        }
+//
+//        initializeEngine { [weak self] result in
+//            switch result {
+//            case .success:
+//                if let storedConfig = self?.dependencies.keychainHelper.config {
+//                    storedConfig.set(originURL: url)
+//                    self?.dependencies.keychainHelper.save(configuration: storedConfig)
+//                }
+//                self?.dependencies.services.tappService.fetchLinkData(for: url, completion: completion)
+//            case .failure(let error):
+//                Logger.logError(error)
+//                completion?(Result.failure(error))
+//            }
+//        }
+//    }
 }
 
 extension Tapp {
     var affiliateService: AffiliateServiceProtocol? {
-        guard let config = dependencies.keychainHelper.config else { return nil }
+        guard let config = dependencies.keychainHelper.config else {
+            return nil
+        }
 
+        var service: AffiliateServiceProtocol?
         switch config.affiliate {
         case .tapp:
-            return dependencies.services.tappService
+            service = dependencies.services.tappService
         case .adjust, .appsflyer:
-            return overridenService
+            service = overridenService
         }
+        service?.delegate = self
+        return service
     }
 }
 
@@ -366,5 +389,20 @@ extension Tapp: DeferredLinkDelegate {
                 Logger.logError(error)
             }
         }
+    }
+}
+
+extension Tapp: AffiliateServiceDelegate {
+    func didReceive(fingerprintResponse: FingerprintResponse) {
+        guard !fingerprintResponse.isAlreadyVerified else { return }
+        guard let tappURL = fingerprintResponse.tappURL else { return }
+        guard let attributedTappURL = fingerprintResponse.attributedTappURL else { return }
+        guard let influencer = fingerprintResponse.influencer else { return }
+        let linkData = TappDeferredLinkData(tappURL: tappURL,
+                                            attributedTappURL: attributedTappURL,
+                                            influencer: influencer,
+                                            data: fingerprintResponse.validData,
+                                            isFirstSession: self.isFirstSession)
+        delegate?.didOpenApplication?(with: linkData)
     }
 }
