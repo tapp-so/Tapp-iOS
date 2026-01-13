@@ -16,7 +16,7 @@ let package = Package(
             targets: ["Tapp"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/tapp-so/Tapp-Networking-iOS.git", exact: "1.0.93")
+        .package(url: "https://github.com/tapp-so/Tapp-Networking-iOS.git", exact: "1.0.94")
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.

@@ -253,10 +253,17 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
     }
 
     func fetchLinkData(for url: URL, completion: LinkDataDTOCompletion?) {
-        Check keychain for data instead of Tapp backend. Tapp backend is only for Adjust
-//        guard let linkToken = url.param(for: AdjustURLParamKey.token.rawValue) else { return }
-//
-//        fetchLinkData(linkToken: linkToken, completion: completion)
+        if let dto = keychainHelper.config?.linkDataDTO {
+            completion?(Result.success(dto))
+            return
+        }
+        
+        guard let linkToken = url.param(for: AdjustURLParamKey.token.rawValue) else {
+            completion?(.failure(TappServiceError.invalidURL))
+            return
+        }
+
+        fetchLinkData(linkToken: linkToken, completion: completion)
     }
 }
 
@@ -384,18 +391,48 @@ private extension TappAffiliateService {
     func updateConfiguration(response: FingerprintResponse) {
         guard let config = keychainHelper.config else { return }
         guard let deviceID = response.deviceID?.id else { return }
-        if let originURL = response.tappURL {
-            config.set(originURL: originURL)
+
+        if let url = response.tappURL {
+            config.set(originURL: url)
         }
+        if let attributedTappURL = response.attributedTappURL {
+            config.set(originAttributedTappURL: attributedTappURL)
+        }
+        if let influencer = response.influencer {
+            config.set(originInfluencer: influencer)
+        }
+        if let data = response.data {
+            config.set(originData: data)
+        }
+
         config.set(deviceID: deviceID)
         config.set(isAlreadyVerified: response.isAlreadyVerified)
-        //add affiliate
-        //add influencer
-        //add data
+
         keychainHelper.save(configuration: config)
     }
 
     var deviceID: String? {
         return keychainHelper.config?.deviceID
+    }
+}
+
+private extension TappConfiguration {
+    var linkDataDTO: TappDeferredLinkDataDTO? {
+        guard let originURL, let originAttributedTappURL, let originInfluencer else { return nil }
+        return TappDeferredLinkDataDTO(tappURL: originURL,
+                                       attributedTappURL: originAttributedTappURL,
+                                       influencer: originInfluencer,
+                                       data: validData)
+    }
+
+    var validData: [String: String]? {
+        guard let originData else { return nil }
+        var dict: [String: String] = [:]
+        for key in originData.keys {
+            if let value = originData[key] {
+                dict[key] = value
+            }
+        }
+        return dict
     }
 }

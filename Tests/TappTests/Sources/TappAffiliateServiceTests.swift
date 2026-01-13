@@ -533,6 +533,82 @@ final class TappAffiliateServiceTests: XCTestCase {
         XCTAssertTrue(sut.shouldProcess(url: URL(string: "https://tapp.so")!))
         XCTAssertFalse(sut.shouldProcess(url: URL(string: "https://google.com")!))
     }
+
+    func testLinkDataWithExistingData() {
+        let config = self.config(env: .sandbox)
+        config.set(originURL: url)
+        config.set(originAttributedTappURL: url)
+        config.set(originInfluencer: influencer)
+        config.set(originData: ["key": "value"])
+        dependenciesHelper.keychainHelper.configObject = config
+
+        let expectation = expectation(description: "testLinkDataWithExistingData")
+        sut.fetchLinkData(for: url) { result in
+            switch result {
+            case .success:
+                break
+            case .failure:
+                XCTFail()
+            }
+            expectation.fulfill()
+        }
+        waitForExpectations(timeout: 1.0)
+        XCTAssertTrue(dependenciesHelper.networkClient.executeAuthenticatedRequests.isEmpty)
+    }
+
+    func testLinkDataWithExistingIncompleteData() {
+        let config = self.config(env: .sandbox)
+        config.set(originURL: url)
+        config.set(originAttributedTappURL: url)
+        config.set(originData: ["key": "value"])
+        dependenciesHelper.keychainHelper.configObject = config
+
+        let expectation = expectation(description: "testLinkDataWithExistingIncompleteData")
+        sut.fetchLinkData(for: url) { result in
+            switch result {
+            case .success:
+                XCTFail()
+            case .failure(let error):
+                guard let err = error as? TappServiceError else {
+                    XCTFail()
+                    return
+                }
+                switch err {
+                case .invalidURL:
+                    break
+                default:
+                    XCTFail()
+                }
+            }
+            expectation.fulfill()
+        }
+        waitForExpectations(timeout: 1.0)
+        XCTAssertTrue(dependenciesHelper.networkClient.executeAuthenticatedRequests.isEmpty)
+    }
+
+    func testFetchAdjustLinkData() {
+        let config = self.config(env: .sandbox)
+        dependenciesHelper.keychainHelper.configObject = config
+
+        let expectation = expectation(description: "testFetchAdjustLinkData")
+
+        let object = linkDataRequest()
+        let endpoint = TappEndpoint.linkData(object)
+        let request = endpoint.request!
+        dependenciesHelper.networkClient.executeAuthenticatedResponseData[request.url!.absoluteString] = data(codable: linkDataResponse())
+
+        sut.fetchLinkData(for: URL(string: "https://tapp.so?adj_t=1234")!) { result in
+            switch result {
+            case .success:
+                break
+            case .failure:
+                XCTFail()
+            }
+            expectation.fulfill()
+        }
+        waitForExpectations(timeout: 1.0)
+        XCTAssertNotNil(dependenciesHelper.networkClient.executeAuthenticatedRequests[request.url!.absoluteString])
+    }
 }
 
 private extension TappAffiliateServiceTests {
@@ -597,6 +673,14 @@ private extension TappAffiliateServiceTests {
         return GeneratedURLResponse(url: url)
     }
 
+    func linkDataRequest() -> TappLinkDataRequest {
+        return TappLinkDataRequest(tappToken: tappToken, bundleID: bundleID, linkToken: "1234")
+    }
+
+    func linkDataResponse() -> TappDeferredLinkDataDTO {
+        return TappDeferredLinkDataDTO(tappURL: url, attributedTappURL: url, influencer: influencer, data: [:])
+    }
+
     func data(codable: Codable) -> Data? {
         let encoder = JSONEncoder()
         return try? encoder.encode(codable)
@@ -642,7 +726,15 @@ private extension TappAffiliateServiceTests {
     }
 }
 
-private final class TestScriptMessage: WKScriptMessage {
-    override var body: Any { "test" }
-    override var name: String { "test" }
+final class TestScriptMessage: WKScriptMessage {
+    let overrideBody: String
+    let overrideName: String
+
+    init(overrideBody: String = "test", overrideName: String = "test") {
+        self.overrideBody = overrideBody
+        self.overrideName = overrideName
+    }
+
+    override var body: Any { overrideBody }
+    override var name: String { overrideName }
 }

@@ -5,8 +5,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/tapp-so/Tapp-Networking-iOS.git",
       "state" : {
-        "revision" : "f207e77049e6242caa32d9942f4edb40029ffd07",
-        "version" : "1.0.93"
+        "revision" : "178764f0ce63a8adbeaf3d8196afd5428f034fe7",
+        "version" : "1.0.94"
       }
     }
   ],
