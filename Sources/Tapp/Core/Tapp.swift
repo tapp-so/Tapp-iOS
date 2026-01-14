@@ -83,7 +83,7 @@ public class Tapp: NSObject {
 
     func handleTappEvent(event: TappEvent) {
         guard event.eventAction.isValid else {
-            Logger.logError(TappError.eventActionMissing)
+            print("Error: \(TappError.eventActionMissing.localizedDescription)")
             return
         }
 
@@ -227,7 +227,7 @@ internal extension Tapp {
                     }
                 case .failure(let error):
                     let err = TappError.affiliateServiceError(affiliate: config.affiliate, underlyingError: error)
-                    Logger.logError(err)
+                    print("Error: \(err.localizedDescription)")
                     self.completeInitializations(with: err)
                 }
                 self.secretsDataTask = nil
@@ -265,7 +265,7 @@ internal extension Tapp {
                 completion?(.success(response.brandedURL)) //Fingerprint URL
             case .failure(let error):
                 let err = TappError.affiliateServiceError(affiliate: config.affiliate, underlyingError: error)
-                Logger.logError(err)
+                print("Error: \(err.localizedDescription)")
                 completion?(Result.failure(err))
             }
         }
@@ -274,7 +274,7 @@ internal extension Tapp {
     func initializeAffiliateService(brandedURL: URL?, completion: VoidCompletion?) {
         guard let service = affiliateService else {
             let error = TappError.missingParameters(details: "Affiliate service not configured")
-            Logger.logError(error)
+            print("Error: \(error.localizedDescription)")
             completion?(Result.failure(error))
             return
         }
@@ -287,7 +287,7 @@ internal extension Tapp {
         guard let storedConfig = dependencies.keychainHelper.config else {
             let error = TappError.missingParameters(details:
                                                         "Missing required credentials or bundle identifier")
-            Logger.logError(error)
+            print("Error: \(error.localizedDescription)")
             completion?(Result.failure(error))
             return
         }
@@ -318,27 +318,6 @@ internal extension Tapp {
     func shouldProcess(url: URL) -> Bool {
         return dependencies.services.tappService.shouldProcess(url: url)
     }
-//
-//    func fetchLinkData(for url: URL, completion: LinkDataDTOCompletion?) {
-//        guard shouldProcess(url: url) else {
-//            completion?(Result.failure(TappServiceError.unprocessableEntity))
-//            return
-//        }
-//
-//        initializeEngine { [weak self] result in
-//            switch result {
-//            case .success:
-//                if let storedConfig = self?.dependencies.keychainHelper.config {
-//                    storedConfig.set(originURL: url)
-//                    self?.dependencies.keychainHelper.save(configuration: storedConfig)
-//                }
-//                self?.dependencies.services.tappService.fetchLinkData(for: url, completion: completion)
-//            case .failure(let error):
-//                Logger.logError(error)
-//                completion?(Result.failure(error))
-//            }
-//        }
-//    }
 }
 
 extension Tapp {
@@ -386,7 +365,7 @@ extension Tapp: DeferredLinkDelegate {
                     self.isFirstSession = false
                 }
             case .failure(let error):
-                Logger.logError(error)
+                print("Error: \(error.localizedDescription)")
             }
         }
     }
@@ -396,6 +375,9 @@ extension Tapp: AffiliateServiceDelegate {
     func didReceive(fingerprintResponse: FingerprintResponse) {
         guard !fingerprintResponse.isAlreadyVerified else { return }
         guard let tappURL = fingerprintResponse.tappURL else { return }
+
+        self.dependencies.services.tappService.handleImpression(url: tappURL, completion: nil)
+
         guard let attributedTappURL = fingerprintResponse.attributedTappURL else { return }
         guard let influencer = fingerprintResponse.influencer else { return }
         let linkData = TappDeferredLinkData(tappURL: tappURL,

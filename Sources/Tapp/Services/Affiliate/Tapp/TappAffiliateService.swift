@@ -245,7 +245,8 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
     }
 
     func handleEvent(eventId: String, authToken: String?) {
-        Logger.logInfo("Use the handleTappEvent method to handle Tapp events")
+        print("Use the handleTappEvent method to handle Tapp events")
+
     }
 
     func shouldProcess(url: URL) -> Bool {

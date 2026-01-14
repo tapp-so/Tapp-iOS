@@ -436,6 +436,7 @@ final class TappTests: XCTestCase {
         XCTAssertEqual(tappDelegate.didOpenApplicationData?.attributedTappURL, response.attributedTappURL)
         XCTAssertEqual(tappDelegate.didOpenApplicationData?.influencer, response.influencer)
         XCTAssertEqual(tappDelegate.didOpenApplicationData?.data, response.data)
+        XCTAssertNotNil(dependenciesHelper.tappAffiliateService.handleImpressionCalled)
     }
 }
 
