@@ -1,4 +1,5 @@
 import Foundation
+import TappNetworking
 
 #if os(iOS)
 import UIKit
@@ -6,42 +7,46 @@ import UIKit
 import AppKit
 #endif
 
-@objc
-public final class FingerprintTestConfiguration: NSObject {
-    let isTestingFingerprints: Bool
-    let fingerprintOperationResult: Bool
-
-    @objc
-    public init(isTestingFingerprints: Bool, fingerprintOperationResult: Bool) {
-        self.isTestingFingerprints = isTestingFingerprints
-        self.fingerprintOperationResult = fingerprintOperationResult
-        super.init()
-    }
-}
-
 struct Fingerprint: Codable {
-    let fp: Bool?
     let tappToken: String
+    let webview: String?
     let screenResolution: String
+    let deviceName: String
     let language: String
     let region: String
-    let locale: String
+    let locale: String 
     let calendar: String
     let numberingSystem: String?
     let defaultDateFormat: String
     let timezone: String
-    let orientation: String
     let platform: String
     let userAgent: String
     let timestamp: Int64
+    let bundleID: String?
+    let deviceID: String?
 
-    static func generate(tappToken: String, testConfiguration: FingerprintTestConfiguration?) -> Fingerprint {
 
-        var isSuccess: Bool?
-        if let testConfiguration, testConfiguration.isTestingFingerprints {
-            isSuccess = testConfiguration.fingerprintOperationResult
-        }
+    enum CodingKeys: String, CodingKey {
+        case tappToken = "tapp_token"
+        case webview
 
+        case screenResolution
+        case deviceName
+        case language
+        case region
+        case locale
+        case calendar
+        case numberingSystem
+        case defaultDateFormat
+        case timezone
+        case platform
+        case userAgent
+        case timestamp
+        case bundleID = "bundle_id"
+        case deviceID = "device_id"
+    }
+
+    static func generate(tappToken: String, webBody: String?, deviceID: String?) -> Fingerprint {
         let screenResolution: String = {
             #if os(iOS)
             let screen = UIScreen.main
@@ -58,6 +63,14 @@ struct Fingerprint: Codable {
             } else {
                 return "unknown"
             }
+            #endif
+        }()
+
+        let deviceName: String = {
+            #if os(iOS)
+            return UIDevice.current.tp_modelIdentifier
+            #elseif os(macOS)
+            return ProcessInfo.processInfo.tp_modelIdentifier
             #endif
         }()
 
@@ -85,11 +98,12 @@ struct Fingerprint: Codable {
         let bundleID = Bundle.main.bundleIdentifier ?? "unknown"
         let userAgent = "App/\(bundleID)"
 
-        let timestamp = Int64(Date().timeIntervalSince1970 * 1000)
+        let timestamp = Int64(Date().timeIntervalSince1970)
 
-        return Fingerprint(fp: isSuccess,
-                           tappToken: tappToken,
+        return Fingerprint(tappToken: tappToken,
+                           webview: webBody,
                            screenResolution: screenResolution,
+                           deviceName: deviceName,
                            language: language,
                            region: region,
                            locale: language,
@@ -97,11 +111,11 @@ struct Fingerprint: Codable {
                            numberingSystem: numberingSystem,
                            defaultDateFormat: defaultDateFormat,
                            timezone: timezone,
-                           orientation: orientation,
                            platform: platform,
                            userAgent: userAgent,
-                           timestamp: timestamp
-        )
+                           timestamp: timestamp,
+                           bundleID: bundleID,
+                           deviceID: deviceID)
     }
 }
 
@@ -120,5 +134,29 @@ private extension UIDeviceOrientation {
         #else
         return "macos"
         #endif
+    }
+}
+
+private extension UIDevice {
+    var tp_modelIdentifier: String {
+        var systemInfo = utsname()
+        uname(&systemInfo)
+        return withUnsafePointer(to: &systemInfo.machine) {
+            $0.withMemoryRebound(to: CChar.self, capacity: 1) {
+                String(cString: $0)
+            }
+        }
+    }
+}
+
+private extension ProcessInfo {
+    var tp_modelIdentifier: String {
+        var systemInfo = utsname()
+        uname(&systemInfo)
+        return withUnsafePointer(to: &systemInfo.machine) {
+            $0.withMemoryRebound(to: CChar.self, capacity: 1) {
+                String(cString: $0)
+            }
+        }
     }
 }

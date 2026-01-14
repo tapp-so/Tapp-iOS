@@ -1,10 +1,15 @@
 import Foundation
 import TappNetworking
-import UIKit
+import WebKit
 
 public enum ResolvedURLError: Error {
     case cannotResolveURL
     case cannotResolveDeepLink
+}
+
+enum TappAffiliateServiceError: Error {
+    case undefined
+    case decodingError
 }
 
 typealias FingerprintCompletion = (_ result: Result<FingerprintResponse, Error>) -> Void
@@ -14,58 +19,66 @@ protocol TappAffiliateServiceProtocol: AffiliateServiceProtocol, TappServiceProt
 final class TappAffiliateService: TappAffiliateServiceProtocol {
 
     var isInitialized: Bool = false
+    var delegate: AnyObject?
+
     private let keychainHelper: KeychainHelperProtocol
     private let networkClient: NetworkClientProtocol
+    private let webLoaderProvider: WebLoaderProviderProtocol
+    private(set) var webLoader: WebLoaderProtocol?
 
-    init(keychainHelper: KeychainHelperProtocol, networkClient: NetworkClientProtocol) {
+    private var affiliateServiceDelegate: AffiliateServiceDelegate? {
+        return delegate as? AffiliateServiceDelegate
+    }
+
+    init(keychainHelper: KeychainHelperProtocol, networkClient: NetworkClientProtocol, webLoaderProvider: WebLoaderProviderProtocol) {
         self.keychainHelper = keychainHelper
         self.networkClient = networkClient
+        self.webLoaderProvider = webLoaderProvider
     }
 
-    func initialize(environment: Environment, fingerprintTestConfiguration: FingerprintTestConfiguration?, completion: VoidCompletion?) {
-        guard let tappToken = keychainHelper.config?.tappToken else {
-            completion?(Result.failure(TappServiceError.invalidData))
+    func initialize(environment: Environment, brandedURL: URL?, completion: VoidCompletion?) {
+        guard keychainHelper.config != nil else {
+            completion?(.failure(TappServiceError.invalidData))
             return
         }
 
-        fingerprint(tappToken: tappToken, testConfiguration: fingerprintTestConfiguration) { result in
+        fetchDevice { [weak self] result in
+            guard let self else { return }
             switch result {
-            case .success(let response):
-                print(response)
-                completion?(Result.success(()))
-            case .failure(let error):
-                completion?(Result.failure(error))
-            }
-        }
-    }
-
-    private func fingerprint(tappToken: String, testConfiguration: FingerprintTestConfiguration?, completion: FingerprintCompletion?) {
-        let fingerprint = Fingerprint.generate(tappToken: tappToken, testConfiguration: testConfiguration)
-        let endpoint = TappEndpoint.fingerpint(fingerprint)
-        guard let request = endpoint.request else {
-            completion?(Result.failure(TappServiceError.invalidRequest))
-            return
-        }
-
-        networkClient.executeAuthenticated(request: request) { [weak self] result in
-            self?.isInitialized = true
-            switch result {
-                case .success(let data):
-                let decoder = JSONDecoder()
-                do {
-                    let response = try decoder.decode(FingerprintResponse.self, from: data)
-                    completion?(Result.success(response))
-                } catch {
-                    completion?(Result.failure(error))
+            case .success(let device):
+                guard let config = self.keychainHelper.config else {
+                    completion?(.failure(TappServiceError.invalidData))
+                    return
                 }
-            case .failure:
-                completion?(.failure(TappServiceError.invalidRequest))
+                config.set(deviceID: device.id)
+                self.keychainHelper.save(configuration: config)
+
+                if config.isAlreadyVerified == false {
+                    self.beginWebFlow(config: config, brandedURL: brandedURL, completion: completion)
+                }
+
+            case .failure(let error):
+                completion?(.failure(error))
             }
         }
+    }
+
+    private func beginWebFlow(config: TappConfiguration, brandedURL: URL?, completion: VoidCompletion?) {
+        let hasOriginURL = keychainHelper.config?.originURL != nil
+
+        if let brandedURL, !hasOriginURL {
+            let loader = webLoaderProvider.make(brandedURL: brandedURL)
+            loader.delegate = self
+
+            self.webLoader = loader
+
+            loader.load()
+        }
+
+        completion?(Result.success(()))
     }
 
     func handleCallback(with url: String, completion: ResolvedURLCompletion?) {
-        Logger.logInfo("Handling Tapp callback with URL: \(url)")
         guard let actualURL = URL(string: url) else {
             completion?(Result.failure(ResolvedURLError.cannotResolveURL))
             return
@@ -86,7 +99,10 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
                      creative: String?,
                      data: [String: String]?,
                      completion: GenerateURLCompletion?) {
-        guard let config = keychainHelper.config, let bundleID = config.bundleID else { return }
+        guard let config = keychainHelper.config, let bundleID = config.bundleID else {
+            completion?(.failure(TappServiceError.invalidData))
+            return
+        }
         let createRequest = CreateAffiliateURLRequest(tappToken: config.tappToken,
                                                       bundleID: bundleID,
                                                       mmp: config.affiliate.rawValue,
@@ -108,7 +124,7 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
                     let response = try decoder.decode(GeneratedURLResponse.self, from: data)
                     completion?(Result.success(response))
                 } catch {
-                    completion?(Result.failure(error))
+                    completion?(Result.failure(TappAffiliateServiceError.decodingError))
                 }
             case .failure(let error):
                 completion?(Result.failure(error))
@@ -117,9 +133,71 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
     }
 
     func handleImpression(url: URL, completion: VoidCompletion?) {
-        guard let config = keychainHelper.config, let bundleID = config.bundleID else { return }
+        guard let config = keychainHelper.config, let bundleID = config.bundleID else {
+            completion?(.failure(TappServiceError.invalidData))
+            return
+        }
         let impressionRequest = ImpressionRequest(tappToken: config.tappToken, bundleID: bundleID, deepLink: url)
         commonVoid(with: TappEndpoint.deeplink(impressionRequest), completion: completion)
+    }
+
+    func fetchDevice(completion: DeviceCompletion?) {
+        guard let config = keychainHelper.config, let bundleID = config.bundleID else {
+            completion?(Result.failure(TappServiceError.invalidData))
+            return
+        }
+
+        let deviceRequest = DeviceRequest(tappToken: config.tappToken,
+                                          bundleID: bundleID,
+                                          mmp: config.affiliate.rawValue,
+                                          deviceID: config.deviceID)
+
+        switch config.env {
+        case .sandbox:
+            internalFetchDevice(request: deviceRequest) { [weak self, config] result in
+                guard let self else { return }
+                switch result {
+                case .success(let device):
+                    if device.active == false {
+                        config.set(isAlreadyVerified: false)
+                        self.keychainHelper.save(configuration: config)
+                    }
+                case .failure:
+                    break
+                }
+                completion?(result)
+            }
+        case .production:
+            if let deviceID = config.deviceID {
+                completion?(.success(Device(id: deviceID, active: true)))
+                return
+            }
+            internalFetchDevice(request: deviceRequest, completion: completion)
+        }
+    }
+
+    func internalFetchDevice(request: DeviceRequest, completion: DeviceCompletion?) {
+        let endpoint = TappEndpoint.device(request)
+
+        guard let request = endpoint.request else {
+            completion?(Result.failure(TappServiceError.invalidRequest))
+            return
+        }
+
+        networkClient.executeAuthenticated(request: request) { result in
+            switch result {
+            case .success(let data):
+                let decoder = JSONDecoder()
+                do {
+                    let response = try decoder.decode(DeviceResponse.self, from: data)
+                    completion?(Result.success(response.device))
+                } catch {
+                    completion?(Result.failure(error))
+                }
+            case .failure(let error):
+                completion?(Result.failure(error))
+            }
+        }
     }
 
     func secrets(affiliate: Affiliate, completion: SecretsCompletion?) -> URLSessionDataTaskProtocol? {
@@ -127,7 +205,9 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
             completion?(Result.failure(TappServiceError.invalidData))
             return nil
         }
+
         let secretsRequest = SecretsRequest(tappToken: config.tappToken, bundleID: bundleID, mmp: affiliate.rawValue)
+        
         let endpoint = TappEndpoint.secrets(secretsRequest)
 
         guard let request = endpoint.request else {
@@ -143,7 +223,7 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
                     let response = try decoder.decode(SecretsResponse.self, from: data)
                     completion?(Result.success(response))
                 } catch {
-                    completion?(Result.failure(error))
+                    completion?(Result.failure(TappAffiliateServiceError.decodingError))
                 }
             case .failure(let error):
                 completion?(Result.failure(error))
@@ -165,7 +245,8 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
     }
 
     func handleEvent(eventId: String, authToken: String?) {
-        Logger.logInfo("Use the handleTappEvent method to handle Tapp events")
+        print("Use the handleTappEvent method to handle Tapp events")
+
     }
 
     func shouldProcess(url: URL) -> Bool {
@@ -173,7 +254,15 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
     }
 
     func fetchLinkData(for url: URL, completion: LinkDataDTOCompletion?) {
-        guard let linkToken = url.param(for: AdjustURLParamKey.token.rawValue) else { return }
+        if let dto = keychainHelper.config?.linkDataDTO {
+            completion?(Result.success(dto))
+            return
+        }
+        
+        guard let linkToken = url.param(for: AdjustURLParamKey.token.rawValue) else {
+            completion?(.failure(TappServiceError.invalidURL))
+            return
+        }
 
         fetchLinkData(linkToken: linkToken, completion: completion)
     }
@@ -227,6 +316,53 @@ private extension TappAffiliateService {
             }
         }
     }
+
+    func sendFingerprint(message: WKScriptMessage, completion: FingerprintCompletion?) {
+        guard let config = keychainHelper.config else {
+            completion?(Result.failure(TappServiceError.invalidData))
+            return
+        }
+
+        let fingerprint = Fingerprint.generate(tappToken: config.tappToken,
+                                               webBody: message.body as? String,
+                                               deviceID: deviceID)
+        let endpoint = TappEndpoint.fingerpint(fingerprint)
+        guard let request = endpoint.request else {
+            completion?(Result.failure(TappServiceError.invalidRequest))
+            return
+        }
+
+        networkClient.executeAuthenticated(request: request) { result in
+            switch result {
+                case .success(let data):
+                let decoder = JSONDecoder()
+                do {
+                    let response = try decoder.decode(FingerprintResponse.self, from: data)
+                    completion?(Result.success(response))
+                } catch {
+                    completion?(Result.failure(error))
+                }
+            case .failure:
+                completion?(.failure(TappServiceError.invalidRequest))
+            }
+        }
+    }
+}
+
+//MARK: - WebLoaderDelegate -
+
+extension TappAffiliateService: WebLoaderDelegate {
+    func didReceive(message: WKScriptMessage) {
+        sendFingerprint(message: message) { [weak self] result in
+            switch result {
+            case .success(let response):
+                self?.updateConfiguration(response: response)
+                self?.affiliateServiceDelegate?.didReceive(fingerprintResponse: response)
+            case .failure:
+                break
+            }
+        }
+    }
 }
 
 private enum AdjustURLParamKey: String {
@@ -249,5 +385,55 @@ extension URL {
             return false
         }
         return host == "tapp.so"
+    }
+}
+
+private extension TappAffiliateService {
+    func updateConfiguration(response: FingerprintResponse) {
+        guard let config = keychainHelper.config else { return }
+        guard let deviceID = response.deviceID?.id else { return }
+
+        if let url = response.tappURL {
+            config.set(originURL: url)
+        }
+        if let attributedTappURL = response.attributedTappURL {
+            config.set(originAttributedTappURL: attributedTappURL)
+        }
+        if let influencer = response.influencer {
+            config.set(originInfluencer: influencer)
+        }
+        if let data = response.data {
+            config.set(originData: data)
+        }
+
+        config.set(deviceID: deviceID)
+        config.set(isAlreadyVerified: response.isAlreadyVerified)
+
+        keychainHelper.save(configuration: config)
+    }
+
+    var deviceID: String? {
+        return keychainHelper.config?.deviceID
+    }
+}
+
+private extension TappConfiguration {
+    var linkDataDTO: TappDeferredLinkDataDTO? {
+        guard let originURL, let originAttributedTappURL, let originInfluencer else { return nil }
+        return TappDeferredLinkDataDTO(tappURL: originURL,
+                                       attributedTappURL: originAttributedTappURL,
+                                       influencer: originInfluencer,
+                                       data: validData)
+    }
+
+    var validData: [String: String]? {
+        guard let originData else { return nil }
+        var dict: [String: String] = [:]
+        for key in originData.keys {
+            if let value = originData[key] {
+                dict[key] = value
+            }
+        }
+        return dict
     }
 }

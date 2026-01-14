@@ -20,4 +20,10 @@ struct SecretsRequest: Codable {
 
 struct SecretsResponse: Codable {
     let secret: String
+    let brandedURL: URL
+
+    enum CodingKeys: String, CodingKey {
+        case secret
+        case brandedURL = "branded_url"
+    }
 }
