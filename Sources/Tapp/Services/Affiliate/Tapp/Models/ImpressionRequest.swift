@@ -4,11 +4,13 @@ struct ImpressionRequest: Codable {
     private let tappToken: String
     private let bundleID: String
     private let deepLink: URL
+    private let os: TappOS = .ios
 
     enum CodingKeys: String, CodingKey {
         case tappToken = "tapp_token"
         case bundleID = "bundle_id"
         case deepLink = "deeplink"
+        case os
     }
 
     init(tappToken: String, bundleID: String, deepLink: URL) {

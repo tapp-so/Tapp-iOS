@@ -158,6 +158,8 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
                 guard let self else { return }
                 switch result {
                 case .success(let device):
+                    LogEvent.didReceiveDeviceID(device.id).log()
+
                     if device.active == false {
                         config.set(isAlreadyVerified: false)
                         self.keychainHelper.save(configuration: config)
@@ -239,7 +241,8 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
         let eventRequest = TappEventRequest(tappToken: config.tappToken,
                                             bundleID: bundleID,
                                             eventName: event.eventAction.name,
-                                            url: config.originURL?.absoluteString)
+                                            url: config.originURL?.absoluteString,
+                                            metadata: event.metadata)
         let endpoint = TappEndpoint.tappEvent(eventRequest)
         commonVoid(with: endpoint, completion: completion)
     }

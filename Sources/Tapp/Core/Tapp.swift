@@ -15,7 +15,6 @@ public class Tapp: NSObject {
         self.dispatchQueue = dispatchQueue
         self.isFirstSession = !dependencies.keychainHelper.hasConfig
         super.init()
-        self.setupDependencies()
     }
 
     internal let dependencies: Dependencies
@@ -162,11 +161,7 @@ public class Tapp: NSObject {
         }
     }
 
-    func setupDependencies() {
-
-    }
-
-    private lazy var overridenService: AffiliateServiceProtocol? = {
+    fileprivate lazy var overridenService: AffiliateServiceProtocol? = {
         if let overrideProtocol = self as? AffiliateServiceOverrideProtocol {
             return overrideProtocol.overrideService
         }
@@ -250,11 +245,6 @@ internal extension Tapp {
             completion?(Result.failure(TappError.missingConfiguration))
             return nil
         }
-
-//        guard storedConfig.appToken == nil else {
-//            completion?(Result.success(nil))
-//            return nil
-//        }
 
         return dependencies.services.tappService.secrets(affiliate: config.affiliate) { [unowned config, weak self] result in
             guard let self else { return }
