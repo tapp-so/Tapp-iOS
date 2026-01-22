@@ -54,7 +54,7 @@ private extension TappEndpointTests {
     }
 
     var eventRequest: TappEventRequest {
-        return TappEventRequest(tappToken: tappToken, bundleID: bundleID, eventName: eventName, url: url.absoluteString)
+        return TappEventRequest(tappToken: tappToken, bundleID: bundleID, eventName: eventName, url: url.absoluteString, metadata: nil)
     }
 
     var linkDataRequest: TappLinkDataRequest {

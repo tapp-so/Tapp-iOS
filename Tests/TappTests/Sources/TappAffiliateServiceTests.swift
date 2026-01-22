@@ -641,7 +641,7 @@ private extension TappAffiliateServiceTests {
     }
 
     var tappEventRequest: TappEventRequest {
-        return TappEventRequest(tappToken: tappToken, bundleID: bundleID, eventName: event.eventAction.name, url: url.absoluteString)
+        return TappEventRequest(tappToken: tappToken, bundleID: bundleID, eventName: event.eventAction.name, url: url.absoluteString, metadata: nil)
     }
 
     var secretsRequest: SecretsRequest {
