@@ -80,19 +80,22 @@ struct Fingerprint: Codable {
 
         var numberingSystem = "latn"
 
+        #if os(iOS)
         if #available(iOS 16, *) {
             numberingSystem = locale.numberingSystem.identifier
         }
+        #endif
+
         let calendar = locale.calendar.identifier.debugDescription
         let defaultDateFormat = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
         let timezone = TimeZone.current.identifier
 
-        let orientation = UIDeviceOrientation.stringValue
-
         #if os(iOS)
         let platform = "iOS"
+        let orientation = UIDeviceOrientation.stringValue
         #else
         let platform = "macOS"
+        let orientation: String = .empty
         #endif
 
         let bundleID = Bundle.main.bundleIdentifier ?? "unknown"
@@ -119,6 +122,7 @@ struct Fingerprint: Codable {
     }
 }
 
+#if os(iOS)
 private extension UIDeviceOrientation {
     static var stringValue: String {
         #if os(iOS)
@@ -148,7 +152,7 @@ private extension UIDevice {
         }
     }
 }
-
+#elseif os(macOS)
 private extension ProcessInfo {
     var tp_modelIdentifier: String {
         var systemInfo = utsname()
@@ -160,3 +164,4 @@ private extension ProcessInfo {
         }
     }
 }
+#endif
