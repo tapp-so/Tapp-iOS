@@ -166,7 +166,7 @@ final class TappTests: XCTestCase {
         }
         waitForExpectations(timeout: 1.0)
 
-        XCTAssertEqual(dependenciesHelper.keychainHelper.config?.originURL, url)
+        XCTAssertNil(dependenciesHelper.keychainHelper.config?.originURL)
     }
 
     func testInitializeEngineWithSecretsError() {
@@ -384,8 +384,48 @@ final class TappTests: XCTestCase {
         waitForExpectations(timeout: 1.0)
 
         XCTAssertTrue(dependenciesHelper.tappAffiliateService.secretsCalled)
-        XCTAssertEqual(dependenciesHelper.keychainHelper.saveCalledCount, 3)
+        XCTAssertEqual(dependenciesHelper.keychainHelper.saveCalledCount, 2)
         XCTAssertTrue(dependenciesHelper.tappAffiliateService.fetchLinkDataCalled)
+    }
+
+    func testFetchOriginLinkDataMissingData() {
+        sut.fetchOriginLinkData { result in
+            switch result {
+            case .success:
+                XCTFail()
+            case .failure(let error):
+                guard let error = error as? TappServiceError else {
+                    XCTFail()
+                    return
+                }
+                switch error {
+                case .notFound:
+                    break
+                default:
+                    XCTFail()
+                }
+            }
+        }
+    }
+
+    func testFetchOriginLinkDataExistingData() {
+        let url = URL(string: "https://tapp.so")!
+        dependenciesHelper.keychainHelper.configObject = config
+        dependenciesHelper.keychainHelper.configObject?.set(originURL: url)
+        dependenciesHelper.keychainHelper.configObject?.set(originAttributedTappURL: url)
+        dependenciesHelper.keychainHelper.configObject?.set(originInfluencer: "influencer")
+
+        let data: [String: String?] = ["key1": "value1", "key2": nil]
+        dependenciesHelper.keychainHelper.configObject?.set(originData: data)
+
+        sut.fetchOriginLinkData { result in
+            switch result {
+            case .success(let dto):
+                XCTAssertEqual(dto.data, ["key1": "value1"])
+            case .failure:
+                XCTFail()
+            }
+        }
     }
 
     func testDidReceiveDeferredLinkWithNilDelegate() {

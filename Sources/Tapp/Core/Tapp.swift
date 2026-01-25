@@ -114,10 +114,6 @@ public class Tapp: NSObject {
                 self.dependencies.services.tappService.fetchLinkData(for: url) { result in
                     switch result {
                     case .success(let dto):
-                        if let storedConfig = self.dependencies.keychainHelper.config {
-                            storedConfig.set(originURL: dto.tappURL)
-                            self.dependencies.keychainHelper.save(configuration: storedConfig)
-                        }
                         completion?(Result.success(TappDeferredLinkData(dto: dto, isFirstSession: self.isFirstSession)))
                     case .failure(let error):
                         completion?(Result.failure(error))
@@ -142,15 +138,24 @@ public class Tapp: NSObject {
     }
 
     public static func fetchOriginLinkData(completion: LinkDataCompletion?) {
-        guard let originURL = single.dependencies.keychainHelper.config?.originURL else {
+        single.fetchOriginLinkData(completion: completion)
+    }
+
+    func fetchOriginLinkData(completion: LinkDataCompletion?) {
+        if let dto = dependencies.keychainHelper.config?.linkDataDTO {
+            completion?(Result.success(TappDeferredLinkData(dto: dto, isFirstSession: isFirstSession)))
+        } else {
             completion?(Result.failure(TappServiceError.notFound))
-            return
         }
-        fetchLinkData(for: originURL, completion: completion)
     }
 
     @objc
     public static func fetchOriginLinkData(completion: ((_ response: TappDeferredLinkData?, _ error: Error?) -> Void)?) {
+        single.fetchOriginLinkData(completion: completion)
+    }
+
+    @objc
+    func fetchOriginLinkData(completion: ((_ response: TappDeferredLinkData?, _ error: Error?) -> Void)?) {
         fetchOriginLinkData { result in
             switch result {
             case .success(let data):
@@ -343,7 +348,10 @@ extension Tapp: DeferredLinkDelegate {
                     switch result {
                     case .success(let dto):
                         if let storedConfig = self.dependencies.keychainHelper.config {
-                            storedConfig.set(originURL: url)
+                            storedConfig.set(originURL: dto.tappURL)
+                            storedConfig.set(originAttributedTappURL: dto.attributedTappURL)
+                            storedConfig.set(originInfluencer: dto.influencer)
+                            storedConfig.set(originData: dto.data)
                             self.dependencies.keychainHelper.save(configuration: storedConfig)
                         }
 

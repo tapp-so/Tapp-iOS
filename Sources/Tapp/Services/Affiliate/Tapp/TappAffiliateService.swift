@@ -257,12 +257,7 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
     }
 
     func fetchLinkData(for url: URL, completion: LinkDataDTOCompletion?) {
-        if let dto = keychainHelper.config?.linkDataDTO {
-            completion?(Result.success(dto))
-            return
-        }
-        
-        guard let linkToken = url.param(for: AdjustURLParamKey.token.rawValue) else {
+        guard let linkToken = linkToken(url: url) else {
             completion?(.failure(TappServiceError.invalidURL))
             return
         }
@@ -272,6 +267,18 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
 }
 
 private extension TappAffiliateService {
+    func linkToken(url: URL) -> String? {
+        guard let config = keychainHelper.config else { return nil }
+        switch config.affiliate {
+        case .adjust:
+            return url.param(for: URLParamKey.adjust.rawValue)
+        case .tapp:
+            return url.param(for: URLParamKey.tapp.rawValue)
+        case .appsflyer:
+            return nil
+        }
+    }
+
     func commonVoid(with endpoint: TappEndpoint, completion: VoidCompletion?) {
         guard let request = endpoint.request else {
             completion?(Result.failure(TappServiceError.invalidRequest))
@@ -368,8 +375,9 @@ extension TappAffiliateService: WebLoaderDelegate {
     }
 }
 
-private enum AdjustURLParamKey: String {
-    case token = "adj_t"
+private enum URLParamKey: String {
+    case adjust = "adj_t"
+    case tapp = "t"
 }
 
 extension URL {
@@ -420,7 +428,7 @@ private extension TappAffiliateService {
     }
 }
 
-private extension TappConfiguration {
+extension TappConfiguration {
     var linkDataDTO: TappDeferredLinkDataDTO? {
         guard let originURL, let originAttributedTappURL, let originInfluencer else { return nil }
         return TappDeferredLinkDataDTO(tappURL: originURL,
@@ -429,7 +437,7 @@ private extension TappConfiguration {
                                        data: validData)
     }
 
-    var validData: [String: String]? {
+    private var validData: [String: String]? {
         guard let originData else { return nil }
         var dict: [String: String] = [:]
         for key in originData.keys {

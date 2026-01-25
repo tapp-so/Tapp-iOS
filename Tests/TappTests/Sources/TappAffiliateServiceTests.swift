@@ -534,21 +534,87 @@ final class TappAffiliateServiceTests: XCTestCase {
         XCTAssertFalse(sut.shouldProcess(url: URL(string: "https://google.com")!))
     }
 
-    func testLinkDataWithExistingData() {
-        let config = self.config(env: .sandbox)
-        config.set(originURL: url)
-        config.set(originAttributedTappURL: url)
-        config.set(originInfluencer: influencer)
-        config.set(originData: ["key": "value"])
+    func testLinkDataWithForAdjustSuccess() {
+        XCTAssertTrue(dependenciesHelper.networkClient.executeAuthenticatedRequests.isEmpty)
+        let config = self.config(env: .sandbox, affiliate: .adjust)
+        let url = URL(string: "https://tapp.so?adj_t=1234")!
         dependenciesHelper.keychainHelper.configObject = config
 
-        let expectation = expectation(description: "testLinkDataWithExistingData")
+        let object = linkDataRequest()
+        let endpoint = TappEndpoint.linkData(object)
+        let request = endpoint.request!
+        dependenciesHelper.networkClient.executeAuthenticatedResponseData[request.url!.absoluteString] = data(codable: linkDataResponse())
+
+        let expectation = expectation(description: "testLinkDataWithForAdjustSuccess")
         sut.fetchLinkData(for: url) { result in
             switch result {
             case .success:
                 break
             case .failure:
                 XCTFail()
+            }
+            expectation.fulfill()
+        }
+        waitForExpectations(timeout: 1.0)
+        XCTAssertFalse(dependenciesHelper.networkClient.executeAuthenticatedRequests.isEmpty)
+    }
+
+    func testLinkDataWithForAdjustFailure() {
+        let config = self.config(env: .sandbox, affiliate: .adjust)
+        let url = URL(string: "https://tapp.so?adj_b=1234")!
+        dependenciesHelper.keychainHelper.configObject = config
+
+        let expectation = expectation(description: "testLinkDataWithForAdjustFailure")
+        sut.fetchLinkData(for: url) { result in
+            switch result {
+            case .success:
+                XCTFail()
+            case .failure:
+                break
+            }
+            expectation.fulfill()
+        }
+        waitForExpectations(timeout: 1.0)
+        XCTAssertTrue(dependenciesHelper.networkClient.executeAuthenticatedRequests.isEmpty)
+    }
+
+    func testLinkDataWithForTappSuccess() {
+        XCTAssertTrue(dependenciesHelper.networkClient.executeAuthenticatedRequests.isEmpty)
+        let config = self.config(env: .sandbox, affiliate: .tapp)
+        let url = URL(string: "https://tapp.so?t=1234")!
+        dependenciesHelper.keychainHelper.configObject = config
+
+        let object = linkDataRequest()
+        let endpoint = TappEndpoint.linkData(object)
+        let request = endpoint.request!
+        dependenciesHelper.networkClient.executeAuthenticatedResponseData[request.url!.absoluteString] = data(codable: linkDataResponse())
+
+        let expectation = expectation(description: "testLinkDataWithForTappSuccess")
+        sut.fetchLinkData(for: url) { result in
+            switch result {
+            case .success:
+                break
+            case .failure:
+                XCTFail()
+            }
+            expectation.fulfill()
+        }
+        waitForExpectations(timeout: 1.0)
+        XCTAssertFalse(dependenciesHelper.networkClient.executeAuthenticatedRequests.isEmpty)
+    }
+
+    func testLinkDataWithForTappFailure() {
+        let config = self.config(env: .sandbox, affiliate: .tapp)
+        let url = URL(string: "https://tapp.so?adj_b=1234")!
+        dependenciesHelper.keychainHelper.configObject = config
+
+        let expectation = expectation(description: "testLinkDataWithForTappFailure")
+        sut.fetchLinkData(for: url) { result in
+            switch result {
+            case .success:
+                XCTFail()
+            case .failure:
+                break
             }
             expectation.fulfill()
         }
@@ -585,30 +651,6 @@ final class TappAffiliateServiceTests: XCTestCase {
         waitForExpectations(timeout: 1.0)
         XCTAssertTrue(dependenciesHelper.networkClient.executeAuthenticatedRequests.isEmpty)
     }
-
-    func testFetchAdjustLinkData() {
-        let config = self.config(env: .sandbox)
-        dependenciesHelper.keychainHelper.configObject = config
-
-        let expectation = expectation(description: "testFetchAdjustLinkData")
-
-        let object = linkDataRequest()
-        let endpoint = TappEndpoint.linkData(object)
-        let request = endpoint.request!
-        dependenciesHelper.networkClient.executeAuthenticatedResponseData[request.url!.absoluteString] = data(codable: linkDataResponse())
-
-        sut.fetchLinkData(for: URL(string: "https://tapp.so?adj_t=1234")!) { result in
-            switch result {
-            case .success:
-                break
-            case .failure:
-                XCTFail()
-            }
-            expectation.fulfill()
-        }
-        waitForExpectations(timeout: 1.0)
-        XCTAssertNotNil(dependenciesHelper.networkClient.executeAuthenticatedRequests[request.url!.absoluteString])
-    }
 }
 
 private extension TappAffiliateServiceTests {
@@ -620,11 +662,11 @@ private extension TappAffiliateServiceTests {
         return URL(string: "https://tapp.so")!
     }
 
-    func config(env: Environment) -> TappConfiguration {
+    func config(env: Environment, affiliate: Affiliate? = nil) -> TappConfiguration {
         return TappConfiguration(authToken: "authToken123",
                                  env: env,
                                  tappToken: tappToken,
-                                 affiliate: .tapp,
+                                 affiliate: affiliate ?? .tapp,
                                  bundleID: "bundleID")
     }
 
