@@ -651,6 +651,35 @@ final class TappAffiliateServiceTests: XCTestCase {
         waitForExpectations(timeout: 1.0)
         XCTAssertTrue(dependenciesHelper.networkClient.executeAuthenticatedRequests.isEmpty)
     }
+
+    func testDeferredLinkDataDTODecoding() {
+        let json = """
+            {
+                "error": false,
+                "tapp_url": "https://test.staging.tapp.so/test",
+                "attr_tapp_url": "https://test.staging.tapp.so/test?param1=value1a&param2=value2a",
+                "influencer": "test",
+                "data": {
+                    "param1": "value1a",
+                    "param2": "value2a",
+                    "param3": null,
+                    "param4": null
+                }
+            }
+            """
+        guard let data = json.data(using: .utf8) else {
+            XCTFail()
+            return
+        }
+
+        let decoder = JSONDecoder()
+        do {
+            let dto = try decoder.decode(TappDeferredLinkDataDTO.self, from: data)
+            XCTAssertEqual(dto.data, ["param1": "value1a", "param2": "value2a"])
+        } catch {
+            XCTFail()
+        }
+    }
 }
 
 private extension TappAffiliateServiceTests {
