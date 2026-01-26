@@ -100,6 +100,62 @@ final class TappAffiliateServiceTests: XCTestCase {
         XCTAssertEqual(dependenciesHelper.keychainHelper.saveCalledCount, 1)
     }
 
+    func testInitializeWithValidConfigProductionWithMissingDeviceID() {
+        let env = Environment.production
+        let config = config(env: env)
+
+        dependenciesHelper.keychainHelper.configObject = config
+
+        let expectation = expectation(description: "testInitializeWithValidConfigProductionWithExistingDeviceID")
+
+        XCTAssertFalse(dependenciesHelper.keychainHelper.config!.isAlreadyVerified)
+
+        let deviceRequestObject = DeviceRequest(tappToken: tappToken, bundleID: bundleID, mmp: 3, deviceID: nil)
+        let deviceEndpoint = TappEndpoint.device(deviceRequestObject)
+        let deviceRequest = deviceEndpoint.request!
+        let deviceResponse = DeviceResponse(error: false, device: Device(id: "123456", active: true), message: nil)
+
+        dependenciesHelper.networkClient.executeAuthenticatedResponseData[deviceRequest.url!.absoluteString] = data(codable: deviceResponse)
+
+        sut.initialize(environment: env, brandedURL: url) { result in
+            switch result {
+            case .success:
+                break
+            case .failure:
+                XCTFail()
+            }
+            expectation.fulfill()
+        }
+
+        waitForExpectations(timeout: 1.0)
+
+        XCTAssertTrue(fetchDeviceCalled(env: env))
+        XCTAssertEqual(dependenciesHelper.keychainHelper.saveCalledCount, 1)
+        XCTAssertNotNil(sut.webLoader)
+
+        guard let webLoader = sut.webLoader as? WebLoaderMock else {
+            XCTFail()
+            return
+        }
+
+        XCTAssertTrue(webLoader.loadCalled)
+
+        let fingerprint = Fingerprint.generate(tappToken: config.tappToken,
+                                               webBody: message.body as? String,
+                                               deviceID: config.deviceID)
+        let endpoint = TappEndpoint.fingerpint(fingerprint)
+        let fingerprintRequest = endpoint.request!
+        let fingerprintResponse = fingerprintResponse(error: false, message: nil, active: true)
+        dependenciesHelper.networkClient.executeAuthenticatedResponseData[fingerprintRequest.url!.absoluteString] = data(codable: fingerprintResponse)
+
+        sut.didReceive(message: message)
+
+        XCTAssertNotNil(dependenciesHelper.networkClient.executeAuthenticatedRequests[fingerprintRequest.url!.absoluteString])
+        XCTAssertEqual(dependenciesHelper.keychainHelper.saveCalledCount, 2)
+        XCTAssertTrue(delegate.didReceiveCalled)
+        XCTAssertEqual(delegate.receivedResponse, fingerprintResponse)
+    }
+
     func testInitializeWithValidConfigProductionWithExistingDeviceID() {
         let env = Environment.production
         let config = config(env: env)
@@ -111,7 +167,7 @@ final class TappAffiliateServiceTests: XCTestCase {
 
         XCTAssertFalse(dependenciesHelper.keychainHelper.config!.isAlreadyVerified)
 
-        sut.initialize(environment: .sandbox, brandedURL: url) { result in
+        sut.initialize(environment: env, brandedURL: url) { result in
             switch result {
             case .success:
                 break
