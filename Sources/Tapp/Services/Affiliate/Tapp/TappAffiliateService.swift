@@ -402,7 +402,6 @@ extension URL {
 private extension TappAffiliateService {
     func updateConfiguration(response: FingerprintResponse) {
         guard let config = keychainHelper.config else { return }
-        guard let deviceID = response.deviceID?.id else { return }
 
         if let url = response.tappURL {
             config.set(originURL: url)
@@ -417,7 +416,6 @@ private extension TappAffiliateService {
             config.set(originData: data)
         }
 
-        config.set(deviceID: deviceID)
         config.set(isAlreadyVerified: response.isAlreadyVerified)
 
         keychainHelper.save(configuration: config)

@@ -25,7 +25,6 @@ struct TappEventRequest: Encodable {
         try container.encodeIfPresent(self.url, forKey: .url)
         try container.encode(self.os, forKey: .os)
 
-
         if let metadata {
             var dict: [String: AnyEncodable] = [:]
             for (key, value) in metadata {
