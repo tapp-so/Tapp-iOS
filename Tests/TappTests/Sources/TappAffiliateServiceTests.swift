@@ -206,11 +206,12 @@ final class TappAffiliateServiceTests: XCTestCase {
         XCTAssertEqual(delegate.receivedResponse, fingerprintResponse)
     }
 
-    func testInitializeWithValidConfigProductionWithExistingDeviceIDWithOriginURL() {
+    func testInitializeWithValidConfigProductionWithExistingDeviceIDWithNotAlreadyVerified() {
         let env = Environment.production
         let config = config(env: env)
         config.set(deviceID: "id1")
         config.set(originURL: url)
+        config.set(isAlreadyVerified: false)
 
         dependenciesHelper.keychainHelper.configObject = config
 
@@ -232,7 +233,7 @@ final class TappAffiliateServiceTests: XCTestCase {
 
         XCTAssertFalse(fetchDeviceCalled(env: env))
         XCTAssertEqual(dependenciesHelper.keychainHelper.saveCalledCount, 1)
-        XCTAssertNil(sut.webLoader)
+        XCTAssertNotNil(sut.webLoader)
     }
 
     func testGenerateURLWithMissingConfig() {

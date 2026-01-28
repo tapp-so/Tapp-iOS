@@ -64,9 +64,7 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
     }
 
     private func beginWebFlow(config: TappConfiguration, brandedURL: URL?, completion: VoidCompletion?) {
-        let hasOriginURL = keychainHelper.config?.originURL != nil
-
-        if let brandedURL, !hasOriginURL {
+        if let brandedURL, config.isAlreadyVerified == false {
             let loader = webLoaderProvider.make(brandedURL: brandedURL)
             loader.delegate = self
 
@@ -412,10 +410,7 @@ private extension TappAffiliateService {
         if let influencer = response.influencer {
             config.set(originInfluencer: influencer)
         }
-        if let data = response.data {
-            config.set(originData: data)
-        }
-
+        config.set(originData: response.data)
         config.set(isAlreadyVerified: response.isAlreadyVerified)
 
         keychainHelper.save(configuration: config)
