@@ -5,8 +5,8 @@ import XCTest
 final class FingerprintResponseTests: XCTestCase {
     func testIsAlreadyVerified() {
         XCTAssertFalse(FingerprintResponse.response(hasErrorValue: false, error: false, hasMessage: false).isAlreadyVerified)
-        XCTAssertTrue(FingerprintResponse.response(error: false, hasMessage: false).isAlreadyVerified)
-        XCTAssertFalse(FingerprintResponse.response(error: false, hasMessage: true).isAlreadyVerified)
+        XCTAssertFalse(FingerprintResponse.response(error: false, hasMessage: false).isAlreadyVerified)
+        XCTAssertTrue(FingerprintResponse.response(error: false, hasMessage: true).isAlreadyVerified)
         XCTAssertFalse(FingerprintResponse.response(error: true, hasMessage: true).isAlreadyVerified)
         XCTAssertFalse(FingerprintResponse.response(error: true, hasMessage: false).isAlreadyVerified)
     }

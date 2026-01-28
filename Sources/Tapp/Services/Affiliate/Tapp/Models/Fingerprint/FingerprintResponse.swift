@@ -36,6 +36,8 @@ extension FingerprintResponse {
         guard let error else { return false }
         if error == false {
             if message == nil {
+                return false
+            } else {
                 return true
             }
         } else {

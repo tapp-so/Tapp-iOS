@@ -467,7 +467,7 @@ final class TappTests: XCTestCase {
     }
 
     func testDidReceiveFingerprintResponse() {
-        let response = FingerprintResponse.response(error: false, hasMessage: true)
+        let response = FingerprintResponse.response(error: false, hasMessage: false)
         sut.delegate = tappDelegate
         sut.didReceive(fingerprintResponse: response)
         XCTAssertTrue(tappDelegate.didOpenApplicationCalled)
