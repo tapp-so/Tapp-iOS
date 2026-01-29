@@ -34,16 +34,8 @@ public struct FingerprintResponse: Codable, Equatable {
 extension FingerprintResponse {
     var isAlreadyVerified: Bool {
         guard let error else { return false }
-        if error == false {
-            if message == nil {
-                return false
-            } else {
-                return true
-            }
-        } else {
-            return false
-        }
-        return false
+
+        return !error
     }
 
     var validData: [String: String]? {

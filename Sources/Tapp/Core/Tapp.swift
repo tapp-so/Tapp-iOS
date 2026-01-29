@@ -371,13 +371,14 @@ extension Tapp: DeferredLinkDelegate {
 
 extension Tapp: AffiliateServiceDelegate {
     func didReceive(fingerprintResponse: FingerprintResponse) {
-        guard !fingerprintResponse.isAlreadyVerified else { return }
         guard let tappURL = fingerprintResponse.tappURL else { return }
-
-        self.dependencies.services.tappService.handleImpression(url: tappURL, completion: nil)
-
+        guard let deeplink = fingerprintResponse.deeplink else { return }
         guard let attributedTappURL = fingerprintResponse.attributedTappURL else { return }
         guard let influencer = fingerprintResponse.influencer else { return }
+
+        self.dependencies.services.tappService.handleImpression(url: deeplink, completion: nil)
+
+
         let linkData = TappDeferredLinkData(tappURL: tappURL,
                                             attributedTappURL: attributedTappURL,
                                             influencer: influencer,
