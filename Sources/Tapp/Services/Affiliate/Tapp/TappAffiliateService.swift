@@ -56,7 +56,7 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
                 if config.isAlreadyVerified == false {
                     self.beginWebFlow(config: config, brandedURL: brandedURL, completion: completion)
                 }
-
+                completion?(.success(()))
             case .failure(let error):
                 completion?(.failure(error))
             }

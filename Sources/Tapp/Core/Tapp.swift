@@ -13,7 +13,6 @@ public class Tapp: NSObject {
     init(dependencies: Dependencies = .live, dispatchQueue: DispatchQueue = DispatchQueue(label: "com.tapp.concurrentDispatchQueue")) {
         self.dependencies = dependencies
         self.dispatchQueue = dispatchQueue
-        self.isFirstSession = !dependencies.keychainHelper.hasConfig
         super.init()
     }
 
@@ -21,7 +20,7 @@ public class Tapp: NSObject {
     fileprivate var initializationCompletions: [InitializeTappCompletion] = []
     fileprivate var secretsDataTask: URLSessionDataTaskProtocol?
     fileprivate let dispatchQueue: DispatchQueue
-    fileprivate var isFirstSession: Bool
+    fileprivate var isFirstSession: Bool = false
     internal weak var delegate: TappDelegate?
 
     // MARK: - Configuration
@@ -36,6 +35,7 @@ public class Tapp: NSObject {
         self.delegate = delegate
         self.dependencies.keychainHelper.set(bundleID: config.bundleID)
         self.dependencies.keychainHelper.set(environment: config.env)
+        self.isFirstSession = !dependencies.keychainHelper.hasConfig
 
         if let storedConfig = self.dependencies.keychainHelper.config {
             if storedConfig.authToken != config.authToken || storedConfig.tappToken != config.tappToken {
