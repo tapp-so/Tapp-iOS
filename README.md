@@ -87,7 +87,26 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 > The exact API surface may evolve; see inline docs and source for available calls.
 
-## Deep Links & Deferred Links
+## Deferred Links
+
+Conform to TappDelegate in order to receive information as soon as the app gets installed about the deferred link, if it exists.
+
+```
+extension AppDelegate: TappDelegate {
+    func didOpenApplication(with data: TappDeferredLinkData) {
+        //Process the deferred link data from where this installation originated.
+        //data.tappURL (URL)
+        //data.influencer (String)
+        //data.data ([String: String])
+    }
+
+    func didFailResolvingURL(url: URL, error: Error) {
+        //Handle the error
+    }
+}
+```
+
+## Deep Links
 
 Forward open URL / user activity to Tapp so referrals can be attributed correctly on deep links.
 
