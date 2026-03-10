@@ -199,11 +199,15 @@ Use a simple, flexible event API to record user actions and revenue.
 
 //Register a predefined Tapp event. We provide a comprehensive list of the most app-related events.
 
-Tapp.handleTappEvent(event: TappEvent(eventAction: .completeRegistration))
+let metadata: [String: Encodable] = ["key1": "value1", "key2": 100] // Optional
+Tapp.handleTappEvent(event: TappEvent(eventAction: .completeRegistration, metadata: metadata))
 
 //Register a custom Tapp event.
 
-Tapp.handleTappEvent(event: TappEvent(eventAction: .custom("CUSTOM_EVENT_NAME")))
+let name: String = "event name"
+let eventAction = EventAction.custom(name)
+let metadata: [String: Encodable] = ["key1": "value1", "key2": 100] // Optional
+Tapp.handleTappEvent(event: TappEvent(eventAction: eventAction, metadata: metadata))
 
 ```
 
