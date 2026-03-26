@@ -12,26 +12,26 @@
 
 **Tapp iOS SDK** provides the client-side building blocks for **mobile app attribution** and **affiliate/referral tracking**. Use it to:
 
-* Track installs and sessions
-* Attribute conversions to campaigns, partners, and referral sources
-* Handle referral links and deep links
-* Record custom events with metadata
+- Track installs and sessions
+- Attribute conversions to campaigns, partners, and referral sources
+- Handle referral links and deep links
+- Record custom events with metadata
 
 This repository contains the Swift package and testing targets used across Tapp-powered apps.
 
 ## Features
 
-* ✅ Swift Package with CocoaPods spec
-* 🔗 Deep link & universal link handling helpers
-* 🧭 Install/session lifecycle tracking primitives
-* 🧮 Lightweight analytics event API
-* 🔧 Environment/config management via plist or in-code
+- ✅ Swift Package with CocoaPods spec
+- 🔗 Deep link & universal link handling helpers
+- 🧭 Install/session lifecycle tracking primitives
+- 🧮 Lightweight analytics event API
+- 🔧 Environment/config management via plist or in-code
 
 ## Requirements
 
-* **Xcode**: 15+ (recommended)
-* **Swift**: 5.9+
-* **Platforms**: iOS 13+ (recommended). Check `Package.swift` for the authoritative minimums.
+- **Xcode**: 15+ (recommended)
+- **Swift**: 5.9+
+- **Platforms**: iOS 13+ (recommended). Check `Package.swift` for the authoritative minimums.
 
 > If you need older platform support, open an issue with your target versions and use case.
 
@@ -49,7 +49,7 @@ Add **Tapp-iOS** directly from GitHub:
    https://github.com/tapp-so/Tapp-iOS.git
    ```
 
-3. Choose the latest version tag.
+3. Choose the latest version tag (see [here](https://github.com/tapp-so/Tapp-iOS/tags)).
 
 4. Add the **Tapp** product to your app target.
 
@@ -63,7 +63,7 @@ Or in `Package.swift`:
 
 ## Quick Start
 
-1. **Import and configure** in your `AppDelegate` (or `SceneDelegate` if preferred):
+1. **Import and configure** in your `AppDelegate`:
 
 ```swift
 import Tapp
@@ -111,7 +111,7 @@ Tapp.url(config: request) { result in
 
 Conform to TappDelegate in order to receive information as soon as the app gets installed about the deferred link, if it exists.
 
-```
+```swift
 extension AppDelegate: TappDelegate {
     func didOpenApplication(with data: TappDeferredLinkData) {
         //Process the deferred link data from where this installation originated.
@@ -132,9 +132,11 @@ Forward open URL / user activity to Tapp so referrals can be attributed correctl
 
 **Scene-based apps (iOS 13+):**
 
+To handle forward URLs when the app is still running in the background:
+
 ```swift
 func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
-    if let url = userActivity.referrerURL, Tapp.shouldProcess(url: url) {
+    if let url = userActivity.webpageURL, Tapp.shouldProcess(url: url) {
         Tapp.fetchLinkData(for: url) { result in
             switch result {
             case .success(let linkData):
@@ -145,20 +147,28 @@ func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
         }
     }
 }
+```
 
-func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
-    let tappContexts = URLContexts.filter { Tapp.shouldProcess(url: $0.url) }
-    tappContexts.forEach { context in
-        Tapp.fetchLinkData(for: context.url) { result in
-            switch result {
-            case .success(let linkData):
-                //Process the link data
-            case .failure(let error):
-                //Handle error
+To handle forward from cold starts:
+
+```swift
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+        guard let scene = (scene as? UIWindowScene) else { return }
+        if let userActivity = connectionOptions.userActivities.first,
+           userActivity.activityType == NSUserActivityTypeBrowsingWeb,
+           let url = userActivity.webpageURL, Tapp.shouldProcess(url: url) {
+            Tapp.fetchLinkData(for: url) { result in
+                switch result {
+                case .success(let linkData):
+                    //Process the link data
+                    break
+                case .failure(let error):
+                    //Handle error
+                    break
+                }
             }
         }
     }
-}
 ```
 
 **AppDelegate-based apps:**
@@ -198,6 +208,9 @@ func application(_ application: UIApplication, continue userActivity: NSUserActi
 You would need to add the Associated Domains capability in Xcode in your target settings (Under Signing & capabilities) and add the following applinks values:
 
 <img width="617" height="137" alt="Screenshot 2026-03-26 at 15 03 58" src="https://github.com/user-attachments/assets/31f9b9b4-23f5-4445-91d2-2be90a72cb2c" />
+
+> [!IMPORTANT]  
+> Your provisioning profile(s) will require the Associated Domains entitlement. If this is not yet enabled, don't forget to generate a new one from your developer account.
 
 ## Retrieving origin link data
 
