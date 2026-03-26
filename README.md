@@ -175,6 +175,10 @@ func application(_ application: UIApplication, continue userActivity: NSUserActi
 }
 ```
 
+You would need to add the Associated Domains capability in Xcode in your target settings (Under Signing & capabilities) and add the following applinks values:
+
+<img width="617" height="137" alt="Screenshot 2026-03-26 at 15 03 58" src="https://github.com/user-attachments/assets/31f9b9b4-23f5-4445-91d2-2be90a72cb2c" />
+
 ## Retrieving origin link data
 
 At any point in the app's lifecycle you can retrieve the referrer's link data (if any)
