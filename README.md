@@ -87,6 +87,26 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 > The exact API surface may evolve; see inline docs and source for available calls.
 
+## Generating links
+
+1. At any point you can call the Tapp SDK to generate a unique link:
+
+```swift
+let request = AffiliateURLConfiguration(influencer: influencer, adgroup: adgroup, creative: creative, data: data)
+
+Tapp.url(config: request) { result in
+    DispatchQueue.main.async {
+        switch result {
+        case .success(let response):
+            completion?(Result.success(response.url))
+        case .failure(let error):
+            completion?(Result.failure(error))
+    }
+}
+```
+
+> The exact API surface may evolve; see inline docs and source for available calls.
+
 ## Deferred Links
 
 Conform to TappDelegate in order to receive information as soon as the app gets installed about the deferred link, if it exists.
