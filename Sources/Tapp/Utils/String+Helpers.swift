@@ -1,25 +1,5 @@
 import Foundation
 
-enum LogEvent {
-    case didReceiveDeviceID(String)
-
-    var value: String {
-        switch self {
-        case .didReceiveDeviceID(let string):
-            return "Tapp Device ID: \(string)"
-        }
-    }
-
-    func log(environment: Environment = .sandbox) {
-        switch environment {
-        case .sandbox:
-            value.log(environment: environment)
-        case .production:
-            break
-        }
-    }
-}
-
 extension String {
     public static var empty: String {
         return ""

@@ -32,19 +32,40 @@ public class Tapp: NSObject {
     }
 
     func start(config: TappConfiguration, delegate: TappDelegate?) {
+        TappLog.logInfo(message: "Will start Tapp SDK", environment: config.env, context: "Initialization")
         self.delegate = delegate
         self.dependencies.keychainHelper.set(bundleID: config.bundleID)
         self.dependencies.keychainHelper.set(environment: config.env)
         self.isFirstSession = !dependencies.keychainHelper.hasConfig
 
+        let environment = config.env
+        let context = "Initialization"
+
         if let storedConfig = self.dependencies.keychainHelper.config {
             if storedConfig.authToken != config.authToken || storedConfig.tappToken != config.tappToken {
                 self.dependencies.keychainHelper.save(configuration: config)
+                TappLog.logInfo(message: "Did update config with new tokens",
+                                environment: environment,
+                                context: context)
             }
         } else {
             self.dependencies.keychainHelper.save(configuration: config)
+            TappLog.logInfo(message: "Did set config",
+                            environment: environment,
+                            context: context)
         }
-        self.initializeEngine(completion: nil)
+        self.initializeEngine { result in
+            switch result {
+            case .success:
+                TappLog.logInfo(message: "Tapp initialization completed",
+                                environment: environment,
+                                context: context)
+            case .failure(let error):
+                TappLog.logError(error,
+                                 environment: environment,
+                                 context: context)
+            }
+        }
     }
 
     // MARK: - Generate url
@@ -156,11 +177,18 @@ public class Tapp: NSObject {
 
     @objc
     func fetchOriginLinkData(completion: ((_ response: TappDeferredLinkData?, _ error: Error?) -> Void)?) {
-        fetchOriginLinkData { result in
+        fetchOriginLinkData { [weak self] result in
+            guard let self else { return }
+            let environment = self.dependencies.keychainHelper.currentEnvironment
+            let context = "Fetch origin link data"
             switch result {
             case .success(let data):
+                TappLog.logInfo(message: "Did receive link data \(data)",
+                                environment: environment,
+                                context: context)
                 completion?(data, nil)
             case .failure(let error):
+                TappLog.logError(error, environment: environment, context: context)
                 completion?(nil, error)
             }
         }
@@ -179,10 +207,17 @@ internal extension Tapp {
                     completion: GenerateURLCompletion?) {
         initializeEngine { [weak self] result in
             guard let self else { return }
+            let environment = self.dependencies.keychainHelper.currentEnvironment
+            let context = "Generate Tapp URL"
             switch result {
             case .success:
+                TappLog.logInfo(message: "Will attempt to generate url",
+                                environment: environment,
+                                context: context)
                 guard let storedConfig = self.dependencies.keychainHelper.config else {
-                    completion?(Result.failure(TappServiceError.invalidData))
+                    let error = TappServiceError.invalidData
+                    completion?(Result.failure(error))
+                    TappLog.logError(error, environment: environment, context: context)
                     return
                 }
                 let request = GenerateURLRequest(influencer: config.influencer,
@@ -191,8 +226,20 @@ internal extension Tapp {
                                                  mmp: storedConfig.affiliate,
                                                  data: config.data)
 
-                self.dependencies.services.tappService.url(request: request, completion: completion)
+                self.dependencies.services.tappService.url(request: request) { result in
+                    switch result {
+                    case .success(let response):
+                        TappLog.logInfo(message: "Did generate url: \(response)",
+                                        environment: environment,
+                                        context: context)
+                    case .failure(let error):
+                        TappLog.logError(error, environment: environment, context: context)
+                        break
+                    }
+                    completion?(result)
+                }
             case .failure(let error):
+                TappLog.logError(error, environment: environment, context: context)
                 completion?(Result.failure(error))
             }
         }
@@ -200,8 +247,18 @@ internal extension Tapp {
 
     func initializeEngine(completion: VoidCompletion?) {
         dispatchQueue.async {
+            let environment = self.dependencies.keychainHelper.currentEnvironment
+            let context = "Initialization"
+            TappLog.logInfo(message: "Will initialize Tapp engine",
+                            environment: environment,
+                            context: context)
+            
             guard let config = self.dependencies.keychainHelper.config else {
-                completion?(Result.failure(TappError.missingConfiguration))
+                let error = TappError.missingConfiguration
+                completion?(Result.failure(error))
+                TappLog.logError(error,
+                                 environment: environment,
+                                 context: context)
                 return
             }
 
@@ -210,6 +267,9 @@ internal extension Tapp {
             }
 
             if self.secretsDataTask != nil {
+                TappLog.logInfo(message: "Existing initialization in progress, will return.",
+                                environment: environment,
+                                context: context)
                 return
             }
 
@@ -217,17 +277,24 @@ internal extension Tapp {
                 guard let self else { return }
                 switch result {
                 case .success(let url):
+                    TappLog.logInfo(message: "Did receive branded URL: \(url?.absoluteString ?? "no URL")",
+                                    environment: environment,
+                                    context: "\(context) (keys)")
                     self.initializeAffiliateService(brandedURL: url) { result in
                         switch result {
                         case .success:
+                            TappLog.logInfo(message: "Did initialize affiliate service keys",
+                                            environment: environment,
+                                            context: "\(context) (keys)")
                             self.completeInitializationsWithSuccess()
                         case .failure(let error):
+                            TappLog.logError(error, environment: environment, context: "\(context) (keys")
                             self.completeInitializations(with: error)
                         }
                     }
                 case .failure(let error):
                     let err = TappError.affiliateServiceError(affiliate: config.affiliate, underlyingError: error)
-                    print("Error: \(err.localizedDescription)")
+                    TappLog.logError(error, environment: environment, context: "\(context) (keys)")
                     self.completeInitializations(with: err)
                 }
                 self.secretsDataTask = nil
@@ -246,11 +313,18 @@ internal extension Tapp {
     }
 
     func secrets(config: TappConfiguration, completion: ResolvedOptionalURLCompletion?) -> URLSessionDataTaskProtocol? {
+        let environment = dependencies.keychainHelper.currentEnvironment
+        let context = "Tapp keys"
         guard let storedConfig = dependencies.keychainHelper.config else {
-            completion?(Result.failure(TappError.missingConfiguration))
+            let error = TappError.missingConfiguration
+            completion?(Result.failure(error))
+            TappLog.logError(error, environment: environment, context: context)
             return nil
         }
 
+        TappLog.logInfo(message: "Will attempt to fetch keys",
+                        environment: environment,
+                        context: context)
         return dependencies.services.tappService.secrets(affiliate: config.affiliate) { [unowned config, weak self] result in
             guard let self else { return }
             switch result {
@@ -258,18 +332,22 @@ internal extension Tapp {
                 storedConfig.set(appToken: response.secret)
                 self.dependencies.keychainHelper.save(configuration: storedConfig)
                 completion?(.success(response.brandedURL)) //Fingerprint URL
+                TappLog.logInfo(message: "Did fetch keys",
+                                environment: environment,
+                                context: context)
             case .failure(let error):
                 let err = TappError.affiliateServiceError(affiliate: config.affiliate, underlyingError: error)
-                print("Error: \(err.localizedDescription)")
+                TappLog.logError(err, environment: environment, context: context)
                 completion?(Result.failure(err))
             }
         }
     }
 
     func initializeAffiliateService(brandedURL: URL?, completion: VoidCompletion?) {
+        let environment = dependencies.keychainHelper.currentEnvironment
         guard let service = affiliateService else {
             let error = TappError.missingParameters(details: "Affiliate service not configured")
-            print("Error: \(error.localizedDescription)")
+            TappLog.logError(error, environment: environment, context: "Initialization (Affiliate Service)")
             completion?(Result.failure(error))
             return
         }
@@ -282,7 +360,7 @@ internal extension Tapp {
         guard let storedConfig = dependencies.keychainHelper.config else {
             let error = TappError.missingParameters(details:
                                                         "Missing required credentials or bundle identifier")
-            print("Error: \(error.localizedDescription)")
+            TappLog.logError(error, environment: environment, context: "Initialization (Affiliate Service)")
             completion?(Result.failure(error))
             return
         }
@@ -291,8 +369,9 @@ internal extension Tapp {
             switch result {
             case .success:
                 self?.setProcessedReferralEngine()
-            case .failure:
-                break
+                TappLog.logInfo(message: "Did initialize affiliate service", environment: environment, context: "Initialization (Affiliate Service)")
+            case .failure(let error):
+                TappLog.logError(error, environment: environment, context: "Initialization (Affiliate Service)")
             }
             completion?(result)
         }
@@ -311,7 +390,17 @@ internal extension Tapp {
 
     //MARK: - Deep Links (App Already installed)
     func shouldProcess(url: URL) -> Bool {
-        return dependencies.services.tappService.shouldProcess(url: url)
+        let value = dependencies.services.tappService.shouldProcess(url: url)
+
+        let environment = dependencies.keychainHelper.currentEnvironment
+        let context = "Should process url"
+        if value == true {
+            TappLog.logInfo(message: "Tapp url found", environment: environment, context: context)
+        } else {
+            TappLog.logInfo(message: "URL is not a Tapp url", environment: environment, context: context)
+        }
+
+        return value
     }
 }
 
@@ -336,27 +425,65 @@ extension Tapp {
 extension Tapp: DeferredLinkDelegate {
     public func didReceiveDeferredLink(_ url: URL) {
         initializeEngine { [weak self] result in
+            guard let self else { return }
+
+            let environment = self.dependencies.keychainHelper.currentEnvironment
+            let context = "Did receive deferred link"
             switch result {
             case .success:
-                self?.dependencies.services.tappService.handleImpression(url: url, completion: nil)
+                self.dependencies.services.tappService.handleImpression(url: url) { result in
+                    switch result {
+                    case .success:
+                        TappLog.logInfo(message: "Did track impression",
+                                        environment: environment,
+                                        context: context)
+                    case .failure(let error):
+                        TappLog.logError(error,
+                                         environment: environment,
+                                         context: context)
+                    }
+                }
 
-                guard self?.delegate != nil else { return }
+                guard self.delegate != nil else { return }
 
-                self?.dependencies.services.tappService.fetchLinkData(for: url) { [weak self] result in
+                self.dependencies.services.tappService.fetchLinkData(for: url) { [weak self] result in
                     guard let self else { return }
 
                     switch result {
                     case .success(let dto):
                         if let storedConfig = self.dependencies.keychainHelper.config {
+                            TappLog.logInfo(message: "Will update config with Tapp url: \(dto.tappURL)",
+                                            environment: environment,
+                                            context: context)
                             storedConfig.set(originURL: dto.tappURL)
+
+                            TappLog.logInfo(message: "Will update config with attributed Tapp url: \(dto.attributedTappURL)",
+                                            environment: environment,
+                                            context: context)
                             storedConfig.set(originAttributedTappURL: dto.attributedTappURL)
+
+                            TappLog.logInfo(message: "Will update config with influencer: \(dto.influencer)",
+                                            environment: environment,
+                                            context: context)
                             storedConfig.set(originInfluencer: dto.influencer)
+
                             storedConfig.set(originData: dto.data)
                             self.dependencies.keychainHelper.save(configuration: storedConfig)
                         }
 
-                        self.delegate?.didOpenApplication?(with: TappDeferredLinkData(dto: dto,
-                                                                               isFirstSession: self.isFirstSession))
+                        if let delegate = self.delegate {
+                            TappLog.logInfo(message: "Will inform delegate \(String(describing: delegate)) with link data \(dto)",
+                                            environment: environment,
+                                            context: context)
+
+                            delegate.didOpenApplication?(with: TappDeferredLinkData(dto: dto,
+                                                                                   isFirstSession: self.isFirstSession))
+                        } else {
+                            TappLog.logInfo(message: "No delegate set",
+                                            environment: environment,
+                                            context: context)
+                        }
+
                     case .failure(let error):
                         self.delegate?.didFailResolvingURL?(url: url, error: error)
                     }
@@ -371,19 +498,63 @@ extension Tapp: DeferredLinkDelegate {
 
 extension Tapp: AffiliateServiceDelegate {
     func didReceive(fingerprintResponse: FingerprintResponse) {
-        guard let tappURL = fingerprintResponse.tappURL else { return }
-        guard let deeplink = fingerprintResponse.deeplink else { return }
-        guard let attributedTappURL = fingerprintResponse.attributedTappURL else { return }
-        guard let influencer = fingerprintResponse.influencer else { return }
+        let environment = dependencies.keychainHelper.currentEnvironment
+        let context = "Did receive device match response"
+        guard let tappURL = fingerprintResponse.tappURL else {
+            TappLog.logInfo(message: "Missing Tapp URL", environment: environment, context: context)
+            return
+        }
+        guard let deeplink = fingerprintResponse.deeplink else {
+            TappLog.logInfo(message: "Missing Tapp deeplink", environment: environment, context: context)
+            return
+        }
+        guard let attributedTappURL = fingerprintResponse.attributedTappURL else {
+            TappLog.logInfo(message: "Missing attributed Tapp URL", environment: environment, context: context)
+            return
+        }
+        guard let influencer = fingerprintResponse.influencer else {
+            TappLog.logInfo(message: "Missing Influencer", environment: environment, context: context)
+            return
+        }
 
-        self.dependencies.services.tappService.handleImpression(url: deeplink, completion: nil)
-
+        TappLog.logInfo(message: "Will attempt to track impression",
+                        environment: environment,
+                        context: context)
+        dependencies.services.tappService.handleImpression(url: deeplink) { result in
+            switch result {
+            case .success:
+                TappLog.logInfo(message: "Did track impression",
+                                environment: environment,
+                                context: context)
+            case .failure(let error):
+                TappLog.logError(error,
+                                 environment: environment,
+                                 context: context)
+            }
+        }
 
         let linkData = TappDeferredLinkData(tappURL: tappURL,
                                             attributedTappURL: attributedTappURL,
                                             influencer: influencer,
                                             data: fingerprintResponse.validData,
                                             isFirstSession: self.isFirstSession)
+        TappLog.logInfo(message: "Will inform delegate with link data \(linkData)",
+                        environment: environment,
+                        context: context)
         delegate?.didOpenApplication?(with: linkData)
+    }
+}
+
+public extension Tapp {
+    static func clearTappKeychainData() {
+        single.clearTappKeychainData()
+    }
+
+    func clearTappKeychainData() {
+        guard dependencies.keychainHelper.currentEnvironment == .sandbox else { return }
+        if let bundleID = dependencies.keychainHelper.config?.bundleID {
+            let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrAccount as String: "tapp_c_\(bundleID)_s"]
+            SecItemDelete(query as CFDictionary)
+        }
     }
 }

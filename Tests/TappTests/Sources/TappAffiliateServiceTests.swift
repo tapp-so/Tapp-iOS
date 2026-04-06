@@ -106,7 +106,7 @@ final class TappAffiliateServiceTests: XCTestCase {
 
         dependenciesHelper.keychainHelper.configObject = config
 
-        let expectation = expectation(description: "testInitializeWithValidConfigProductionWithExistingDeviceID")
+        let expectation = expectation(description: "testInitializeWithValidConfigProductionWithMissingDeviceID")
 
         XCTAssertFalse(dependenciesHelper.keychainHelper.config!.isAlreadyVerified)
 
@@ -215,11 +215,11 @@ final class TappAffiliateServiceTests: XCTestCase {
 
         dependenciesHelper.keychainHelper.configObject = config
 
-        let expectation = expectation(description: "testInitializeWithValidConfigProductionWithExistingDeviceID")
+        let expectation = expectation(description: "testInitializeWithValidConfigProductionWithExistingDeviceIDWithNotAlreadyVerified")
 
         XCTAssertFalse(dependenciesHelper.keychainHelper.config!.isAlreadyVerified)
 
-        sut.initialize(environment: .sandbox, brandedURL: url) { result in
+        sut.initialize(environment: .production, brandedURL: url) { result in
             switch result {
             case .success:
                 break
@@ -280,7 +280,7 @@ final class TappAffiliateServiceTests: XCTestCase {
 
     func testGenerateURLWithValidConfigDecodingError() {
         dependenciesHelper.keychainHelper.configObject = config(env: .sandbox)
-        let expectation = expectation(description: "testGenerateURLWithValidConfig")
+        let expectation = expectation(description: "testGenerateURLWithValidConfigDecodingError")
 
         let object = createAffiliateURLRequest
         let endpoint = TappEndpoint.generateURL(object)
@@ -311,7 +311,7 @@ final class TappAffiliateServiceTests: XCTestCase {
 
     func testGenerateURLWithValidConfigServiceError() {
         dependenciesHelper.keychainHelper.configObject = config(env: .sandbox)
-        let expectation = expectation(description: "testGenerateURLWithValidConfig")
+        let expectation = expectation(description: "testGenerateURLWithValidConfigServiceError")
 
         dependenciesHelper.networkClient.executeAuthenticatedError = TappAffiliateServiceError.undefined
 
@@ -462,7 +462,7 @@ final class TappAffiliateServiceTests: XCTestCase {
         dependenciesHelper.keychainHelper.configObject = config
         let endpoint = TappEndpoint.secrets(secretsRequest)
         let request = endpoint.request(encodable: secretsRequest)!
-        let expectation = expectation(description: "testSecretsMissingSuccess")
+        let expectation = expectation(description: "testSecretsSuccess")
         dependenciesHelper.networkClient.executeAuthenticatedResponseData[request.url!.absoluteString] = data(codable: secretsResponse)
         _ = sut.secrets(affiliate: .tapp) { result in
             switch result {

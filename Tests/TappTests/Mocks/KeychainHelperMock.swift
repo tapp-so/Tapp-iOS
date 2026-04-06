@@ -2,6 +2,8 @@ import Foundation
 import TappNetworking
 
 final class KeychainHelperMock: KeychainHelperProtocol {
+    var currentEnvironment: TappNetworking.Environment = .sandbox
+    
     var saveCalledCount: Int = 0
     func save(configuration: TappConfiguration) {
         saveCalledCount += 1

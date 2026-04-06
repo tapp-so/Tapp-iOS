@@ -38,7 +38,9 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
 
     func initialize(environment: Environment, brandedURL: URL?, completion: VoidCompletion?) {
         guard keychainHelper.config != nil else {
-            completion?(.failure(TappServiceError.invalidData))
+            let error = TappServiceError.invalidData
+            completion?(.failure(error))
+            TappLog.logError(error, environment: environment, context: "Affiliate Service Initialization")
             return
         }
 
@@ -47,17 +49,24 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
             switch result {
             case .success(let device):
                 guard let config = self.keychainHelper.config else {
-                    completion?(.failure(TappServiceError.invalidData))
+                    let error = TappServiceError.invalidData
+                    completion?(.failure(error))
+                    TappLog.logError(error, environment: environment, context: "Device fetch (missing config)")
                     return
                 }
                 config.set(deviceID: device.id)
+                TappLog.logInfo(message: "Did set device id: \(device.id)", environment: environment, context: "Device fetch")
                 self.keychainHelper.save(configuration: config)
+                TappLog.logInfo(message: "Did set configuration", environment: environment, context: "Device fetch")
 
                 if config.isAlreadyVerified == false {
+                    TappLog.logInfo(message: "Is not already verified, will begin web flow", environment: environment, context: "Device fetch")
                     self.beginWebFlow(config: config, brandedURL: brandedURL, completion: completion)
+                } else {
+                    completion?(.success(()))
                 }
-                completion?(.success(()))
             case .failure(let error):
+                TappLog.logError(error, environment: environment, context: "Device fetch")
                 completion?(.failure(error))
             }
         }
@@ -71,6 +80,10 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
             self.webLoader = loader
 
             loader.load()
+
+            TappLog.logInfo(message: "Did begin web flow",
+                            environment: keychainHelper.currentEnvironment,
+                            context: "Web flow")
         }
 
         completion?(Result.success(()))
@@ -156,7 +169,7 @@ final class TappAffiliateService: TappAffiliateServiceProtocol {
                 guard let self else { return }
                 switch result {
                 case .success(let device):
-                    LogEvent.didReceiveDeviceID(device.id).log()
+                    TappLog.logInfo(message: "Device received \(device)", environment: keychainHelper.currentEnvironment)
 
                     if device.active == false {
                         config.set(isAlreadyVerified: false)
@@ -361,11 +374,20 @@ private extension TappAffiliateService {
 
 extension TappAffiliateService: WebLoaderDelegate {
     func didReceive(message: WKScriptMessage) {
+        TappLog.logInfo(message: "Did receive web message", environment: keychainHelper.currentEnvironment, context: "Web Load")
+        TappLog.logInfo(message: "Will attempt match", environment: keychainHelper.currentEnvironment, context: "Web Load")
         sendFingerprint(message: message) { [weak self] result in
+            guard let self else { return }
             switch result {
             case .success(let response):
-                self?.updateConfiguration(response: response)
-                self?.affiliateServiceDelegate?.didReceive(fingerprintResponse: response)
+                TappLog.logInfo(message: "Did receive match response",
+                                environment: self.keychainHelper.currentEnvironment,
+                                context: "Device match")
+                self.updateConfiguration(response: response)
+                TappLog.logInfo(message: "Will inform service delegate",
+                                environment: self.keychainHelper.currentEnvironment,
+                                context: "Device match")
+                self.affiliateServiceDelegate?.didReceive(fingerprintResponse: response)
             case .failure:
                 break
             }
@@ -403,15 +425,27 @@ private extension TappAffiliateService {
 
         if let url = response.tappURL {
             config.set(originURL: url)
+            TappLog.logInfo(message: "Did set origin url \(url)",
+                            environment: self.keychainHelper.currentEnvironment,
+                            context: "Device match configuration update")
         }
         if let attributedTappURL = response.attributedTappURL {
             config.set(originAttributedTappURL: attributedTappURL)
+            TappLog.logInfo(message: "Did set attributed Tapp url \(attributedTappURL)",
+                            environment: self.keychainHelper.currentEnvironment,
+                            context: "Device match configuration update")
         }
         if let influencer = response.influencer {
             config.set(originInfluencer: influencer)
+            TappLog.logInfo(message: "Did set influencer \(influencer)",
+                            environment: self.keychainHelper.currentEnvironment,
+                            context: "Device match configuration update")
         }
         config.set(originData: response.data)
         config.set(isAlreadyVerified: response.isAlreadyVerified)
+        TappLog.logInfo(message: "Did set already verified to \(response.isAlreadyVerified)",
+                        environment: self.keychainHelper.currentEnvironment,
+                        context: "Device match configuration update")
 
         keychainHelper.save(configuration: config)
     }
