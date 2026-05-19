@@ -32,6 +32,7 @@ public class Tapp: NSObject {
     }
 
     func start(config: TappConfiguration, delegate: TappDelegate?) {
+
         TappLog.logInfo(message: "Will start Tapp SDK", environment: config.env, context: "Initialization")
         self.delegate = delegate
         self.dependencies.keychainHelper.set(bundleID: config.bundleID)
@@ -551,10 +552,6 @@ public extension Tapp {
     }
 
     func clearTappKeychainData() {
-        guard dependencies.keychainHelper.currentEnvironment == .sandbox else { return }
-        if let bundleID = dependencies.keychainHelper.config?.bundleID {
-            let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrAccount as String: "tapp_c_\(bundleID)_s"]
-            SecItemDelete(query as CFDictionary)
-        }
+        dependencies.keychainHelper.clearKeychainData()
     }
 }
