@@ -70,6 +70,19 @@ public class Tapp: NSObject {
     }
 
     // MARK: - Generate url
+    public static func url(config: AffiliateURLConfiguration) async throws -> GeneratedURLResponse {
+        try await withCheckedThrowingContinuation { continuation in
+            url(config: config) { result in
+                switch result {
+                case .success(let object):
+                    continuation.resume(returning: object)
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
     public static func url(config: AffiliateURLConfiguration,
                     completion: GenerateURLCompletion?) {
         single.url(config: config, completion: completion)
@@ -119,6 +132,19 @@ public class Tapp: NSObject {
         return service.shouldProcess(url: url)
     }
 
+    public static func fetchLinkData(for url: URL) async throws -> TappDeferredLinkData {
+        try await withCheckedThrowingContinuation { continuation in
+            fetchLinkData(for: url) { result in
+                switch result {
+                case .success(let object):
+                    continuation.resume(returning: object)
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
     public static func fetchLinkData(for url: URL, completion: LinkDataCompletion?) {
         single.internalFetchLinkData(for: url, completion: completion)
     }
@@ -155,6 +181,19 @@ public class Tapp: NSObject {
                 completion?(data, nil)
             case .failure(let error):
                 completion?(nil, error)
+            }
+        }
+    }
+
+    public static func fetchOriginLinkData() async throws -> TappDeferredLinkData {
+        try await withCheckedThrowingContinuation { continuation in
+            fetchOriginLinkData { result in
+                switch result {
+                case .success(let object):
+                    continuation.resume(returning: object)
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
             }
         }
     }
