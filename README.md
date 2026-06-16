@@ -57,7 +57,7 @@ Or in `Package.swift`:
 
 ```swift
 .dependencies: [
-    .package(url: "https://github.com/tapp-so/Tapp-iOS.git", from: "1.0.91")
+    .package(url: "https://github.com/tapp-so/Tapp-iOS.git", from: "1.0.22")
 ]
 ```
 
