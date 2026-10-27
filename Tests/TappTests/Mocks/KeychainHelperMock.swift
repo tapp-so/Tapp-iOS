@@ -28,4 +28,10 @@ final class KeychainHelperMock: KeychainHelperProtocol {
     var hasConfig: Bool {
         return config != nil
     }
+
+    var clearKeychainDataCalled: Bool = false
+    func clearKeychainData() {
+        clearKeychainDataCalled = true
+        configObject = nil
+    }
 }

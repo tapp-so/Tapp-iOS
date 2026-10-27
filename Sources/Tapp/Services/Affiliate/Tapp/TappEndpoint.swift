@@ -13,7 +13,7 @@ public enum APIPath: String {
     case secrets
     case event
     case linkData
-    case fingerprint
+    case touch
     case device
 
     public var prefixInfluencer: String {
@@ -46,12 +46,12 @@ enum TappEndpoint: Endpoint {
     case secrets(SecretsRequest)
     case tappEvent(TappEventRequest)
     case linkData(TappLinkDataRequest)
-    case fingerpint(Fingerprint)
+    case touch(Touch)
     case device(DeviceRequest)
 
     var httpMethod: HTTPMethod {
         switch self {
-        case .generateURL, .deeplink, .secrets, .tappEvent, .linkData, .fingerpint, .device:
+        case .generateURL, .deeplink, .secrets, .tappEvent, .linkData, .touch, .device:
             return .post
         }
     }
@@ -68,8 +68,8 @@ enum TappEndpoint: Endpoint {
             return APIPath.event.rawValue
         case .linkData:
             return APIPath.linkData.rawValue
-        case .fingerpint:
-            return APIPath.fingerprint.rawValue
+        case .touch:
+            return APIPath.touch.rawValue
         case .device:
             return APIPath.device.rawValue
         }
@@ -87,7 +87,7 @@ enum TappEndpoint: Endpoint {
             return request(encodable: requestData)
         case .linkData(let requestData):
             return request(encodable: requestData)
-        case .fingerpint(let requestData):
+        case .touch(let requestData):
             return request(encodable: requestData)
         case .device(let requestData):
             return request(encodable: requestData)

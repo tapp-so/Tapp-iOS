@@ -286,7 +286,8 @@ internal extension Tapp {
     }
 
     func initializeEngine(completion: VoidCompletion?) {
-        dispatchQueue.async {
+        dispatchQueue.async { [weak self] in
+            guard let self else { return }
             let environment = self.dependencies.keychainHelper.currentEnvironment
             let context = "Initialization"
             TappLog.logInfo(message: "Will initialize Tapp engine",
@@ -371,7 +372,7 @@ internal extension Tapp {
             case .success(let response):
                 storedConfig.set(appToken: response.secret)
                 self.dependencies.keychainHelper.save(configuration: storedConfig)
-                completion?(.success(response.brandedURL)) //Fingerprint URL
+                completion?(.success(response.brandedURL))
                 TappLog.logInfo(message: "Did fetch keys",
                                 environment: environment,
                                 context: context)
@@ -537,22 +538,22 @@ extension Tapp: DeferredLinkDelegate {
 }
 
 extension Tapp: AffiliateServiceDelegate {
-    func didReceive(fingerprintResponse: FingerprintResponse) {
+    func didReceive(tc: TCResponse) {
         let environment = dependencies.keychainHelper.currentEnvironment
         let context = "Did receive device match response"
-        guard let tappURL = fingerprintResponse.tappURL else {
+        guard let tappURL = tc.tappURL else {
             TappLog.logInfo(message: "Missing Tapp URL", environment: environment, context: context)
             return
         }
-        guard let deeplink = fingerprintResponse.deeplink else {
+        guard let deeplink = tc.deeplink else {
             TappLog.logInfo(message: "Missing Tapp deeplink", environment: environment, context: context)
             return
         }
-        guard let attributedTappURL = fingerprintResponse.attributedTappURL else {
+        guard let attributedTappURL = tc.attributedTappURL else {
             TappLog.logInfo(message: "Missing attributed Tapp URL", environment: environment, context: context)
             return
         }
-        guard let influencer = fingerprintResponse.influencer else {
+        guard let influencer = tc.influencer else {
             TappLog.logInfo(message: "Missing Influencer", environment: environment, context: context)
             return
         }
@@ -576,7 +577,7 @@ extension Tapp: AffiliateServiceDelegate {
         let linkData = TappDeferredLinkData(tappURL: tappURL,
                                             attributedTappURL: attributedTappURL,
                                             influencer: influencer,
-                                            data: fingerprintResponse.validData,
+                                            data: tc.validData,
                                             isFirstSession: self.isFirstSession)
         TappLog.logInfo(message: "Will inform delegate with link data \(linkData)",
                         environment: environment,

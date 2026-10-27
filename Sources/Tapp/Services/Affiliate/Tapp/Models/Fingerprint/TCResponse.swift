@@ -1,6 +1,6 @@
 import Foundation
 
-public struct FingerprintResponse: Codable, Equatable {
+public struct TCResponse: Codable, Equatable {
     let deeplink: URL?
     let tappURL: URL?
     let attributedTappURL: URL?
@@ -31,7 +31,7 @@ public struct FingerprintResponse: Codable, Equatable {
     }
 }
 
-extension FingerprintResponse {
+extension TCResponse {
     var isAlreadyVerified: Bool {
         guard let error else { return false }
 
