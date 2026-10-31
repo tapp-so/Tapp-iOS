@@ -31,7 +31,7 @@ This repository contains the Swift package and testing targets used across Tapp-
 
 * **Xcode**: 15+ (recommended)
 * **Swift**: 5.9+
-* **Platforms**: iOS 13+ (recommended). Check `Package.swift` for the authoritative minimums.
+* **Platforms**: iOS 15+. Check `Package.swift` for the authoritative minimums.
 
 > If you need older platform support, open an issue with your target versions and use case.
 
@@ -130,7 +130,7 @@ extension AppDelegate: TappDelegate {
 
 Forward open URL / user activity to Tapp so referrals can be attributed correctly on deep links.
 
-**Scene-based apps (iOS 13+):**
+**Scene-based apps:**
 
 ```swift
 func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
