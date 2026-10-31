@@ -10,7 +10,7 @@ Pod::Spec.new do |spec|
   spec.swift_version = '5.7'
   spec.license       = { :type => 'MIT', :file => 'LICENSE.md' }
 
-  spec.ios.deployment_target  = '13.0'
+  spec.ios.deployment_target  = '15.0'
 
   spec.source_files       = 'Sources/**/*.swift'
   spec.ios.source_files   = 'Sources/**/*.swift'
