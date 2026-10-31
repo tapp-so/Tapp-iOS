@@ -140,20 +140,20 @@ final class TappAffiliateServiceTests: XCTestCase {
 
         XCTAssertTrue(webLoader.loadCalled)
 
-        let fingerprint = Fingerprint.generate(tappToken: config.tappToken,
-                                               webBody: message.body as? String,
-                                               deviceID: config.deviceID)
-        let endpoint = TappEndpoint.fingerpint(fingerprint)
-        let fingerprintRequest = endpoint.request!
-        let fingerprintResponse = fingerprintResponse(error: false, message: nil, active: true)
-        dependenciesHelper.networkClient.executeAuthenticatedResponseData[fingerprintRequest.url!.absoluteString] = data(codable: fingerprintResponse)
+        let touch = Touch.generate(tappToken: config.tappToken,
+                                   webBody: message.body as? String,
+                                   deviceID: config.deviceID)
+        let endpoint = TappEndpoint.touch(touch)
+        let tcRequest = endpoint.request!
+        let tcResponse = tcResponse(error: false, message: nil, active: true)
+        dependenciesHelper.networkClient.executeAuthenticatedResponseData[tcRequest.url!.absoluteString] = data(codable: tcResponse)
 
         sut.didReceive(message: message)
 
-        XCTAssertNotNil(dependenciesHelper.networkClient.executeAuthenticatedRequests[fingerprintRequest.url!.absoluteString])
+        XCTAssertNotNil(dependenciesHelper.networkClient.executeAuthenticatedRequests[tcRequest.url!.absoluteString])
         XCTAssertEqual(dependenciesHelper.keychainHelper.saveCalledCount, 2)
         XCTAssertTrue(delegate.didReceiveCalled)
-        XCTAssertEqual(delegate.receivedResponse, fingerprintResponse)
+        XCTAssertEqual(delegate.tc, tcResponse)
     }
 
     func testInitializeWithValidConfigProductionWithExistingDeviceID() {
@@ -190,20 +190,20 @@ final class TappAffiliateServiceTests: XCTestCase {
 
         XCTAssertTrue(webLoader.loadCalled)
 
-        let fingerprint = Fingerprint.generate(tappToken: config.tappToken,
-                                               webBody: message.body as? String,
-                                               deviceID: config.deviceID)
-        let endpoint = TappEndpoint.fingerpint(fingerprint)
-        let fingerprintRequest = endpoint.request!
-        let fingerprintResponse = fingerprintResponse(error: false, message: nil, active: true)
-        dependenciesHelper.networkClient.executeAuthenticatedResponseData[fingerprintRequest.url!.absoluteString] = data(codable: fingerprintResponse)
+        let touch = Touch.generate(tappToken: config.tappToken,
+                                   webBody: message.body as? String,
+                                   deviceID: config.deviceID)
+        let endpoint = TappEndpoint.touch(touch)
+        let tcRequest = endpoint.request!
+        let tcResponse = tcResponse(error: false, message: nil, active: true)
+        dependenciesHelper.networkClient.executeAuthenticatedResponseData[tcRequest.url!.absoluteString] = data(codable: tcResponse)
 
         sut.didReceive(message: message)
 
-        XCTAssertNotNil(dependenciesHelper.networkClient.executeAuthenticatedRequests[fingerprintRequest.url!.absoluteString])
+        XCTAssertNotNil(dependenciesHelper.networkClient.executeAuthenticatedRequests[tcRequest.url!.absoluteString])
         XCTAssertEqual(dependenciesHelper.keychainHelper.saveCalledCount, 2)
         XCTAssertTrue(delegate.didReceiveCalled)
-        XCTAssertEqual(delegate.receivedResponse, fingerprintResponse)
+        XCTAssertEqual(delegate.tc, tcResponse)
     }
 
     func testInitializeWithValidConfigProductionWithExistingDeviceIDWithNotAlreadyVerified() {
@@ -838,15 +838,15 @@ private extension TappAffiliateServiceTests {
         return dependenciesHelper.networkClient.executeAuthenticatedRequests[request.url!.absoluteString] != nil
     }
 
-    func fingerprintResponse(error: Bool?, message: String?, active: Bool) -> FingerprintResponse {
-        return FingerprintResponse(deeplink: url,
-                                   tappURL: url,
-                                   attributedTappURL: url,
-                                   influencer: "influencer",
-                                   data: nil,
-                                   deviceID: FingerprintResponse.DeviceID(id: "id1", active: active),
-                                   error: error,
-                                   message: message)
+    func tcResponse(error: Bool?, message: String?, active: Bool) -> TCResponse {
+        return TCResponse(deeplink: url,
+                          tappURL: url,
+                          attributedTappURL: url,
+                          influencer: "influencer",
+                          data: nil,
+                          deviceID: TCResponse.DeviceID(id: "id1", active: active),
+                          error: error,
+                          message: message)
     }
 
     var message: WKScriptMessage {

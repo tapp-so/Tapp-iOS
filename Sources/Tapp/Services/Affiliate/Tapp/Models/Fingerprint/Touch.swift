@@ -7,7 +7,7 @@ import UIKit
 import AppKit
 #endif
 
-struct Fingerprint: Codable {
+struct Touch: Codable {
     let tappToken: String
     let webview: String?
     let screenResolution: String
@@ -46,7 +46,7 @@ struct Fingerprint: Codable {
         case deviceID = "device_id"
     }
 
-    static func generate(tappToken: String, webBody: String?, deviceID: String?) -> Fingerprint {
+    static func generate(tappToken: String, webBody: String?, deviceID: String?) -> Touch {
         let screenResolution: String = {
             #if os(iOS)
             let screen = UIScreen.main
@@ -103,22 +103,22 @@ struct Fingerprint: Codable {
 
         let timestamp = Int64(Date().timeIntervalSince1970)
 
-        return Fingerprint(tappToken: tappToken,
-                           webview: webBody,
-                           screenResolution: screenResolution,
-                           deviceName: deviceName,
-                           language: language,
-                           region: region,
-                           locale: language,
-                           calendar: calendar,
-                           numberingSystem: numberingSystem,
-                           defaultDateFormat: defaultDateFormat,
-                           timezone: timezone,
-                           platform: platform,
-                           userAgent: userAgent,
-                           timestamp: timestamp,
-                           bundleID: bundleID,
-                           deviceID: deviceID)
+        return Touch(tappToken: tappToken,
+                     webview: webBody,
+                     screenResolution: screenResolution,
+                     deviceName: deviceName,
+                     language: language,
+                     region: region,
+                     locale: language,
+                     calendar: calendar,
+                     numberingSystem: numberingSystem,
+                     defaultDateFormat: defaultDateFormat,
+                     timezone: timezone,
+                     platform: platform,
+                     userAgent: userAgent,
+                     timestamp: timestamp,
+                     bundleID: bundleID,
+                     deviceID: deviceID)
     }
 }
 

@@ -3,9 +3,9 @@ import Foundation
 
 final class AffiliateServiceDelegateMock: AffiliateServiceDelegate {
     var didReceiveCalled: Bool = false
-    var receivedResponse: FingerprintResponse?
-    func didReceive(fingerprintResponse: FingerprintResponse) {
-        didReceiveCalled = true
-        receivedResponse = fingerprintResponse
+    var tc: TCResponse?
+    func didReceive(tc: TCResponse) {
+        self.didReceiveCalled = true
+        self.tc = tc
     }
 }

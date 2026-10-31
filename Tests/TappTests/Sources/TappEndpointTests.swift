@@ -15,7 +15,7 @@ final class TappEndpointTests: XCTestCase {
         XCTAssertEqual(TappEndpoint.secrets(secretsRequest).httpMethod, .post)
         XCTAssertEqual(TappEndpoint.tappEvent(eventRequest).httpMethod, .post)
         XCTAssertEqual(TappEndpoint.linkData(linkDataRequest).httpMethod, .post)
-        XCTAssertEqual(TappEndpoint.fingerpint(fingerPrint).httpMethod, .post)
+        XCTAssertEqual(TappEndpoint.touch(touch).httpMethod, .post)
         XCTAssertEqual(TappEndpoint.device(deviceRequest).httpMethod, .post)
     }
 
@@ -25,7 +25,7 @@ final class TappEndpointTests: XCTestCase {
         XCTAssertEqual(TappEndpoint.secrets(secretsRequest).path, APIPath.secrets.rawValue)
         XCTAssertEqual(TappEndpoint.tappEvent(eventRequest).path, APIPath.event.rawValue)
         XCTAssertEqual(TappEndpoint.linkData(linkDataRequest).path, APIPath.linkData.rawValue)
-        XCTAssertEqual(TappEndpoint.fingerpint(fingerPrint).path, APIPath.fingerprint.rawValue)
+        XCTAssertEqual(TappEndpoint.touch(touch).path, APIPath.tc.rawValue)
         XCTAssertEqual(TappEndpoint.device(deviceRequest).path, APIPath.device.rawValue)
     }
 
@@ -35,7 +35,7 @@ final class TappEndpointTests: XCTestCase {
         XCTAssertNotNil(TappEndpoint.secrets(secretsRequest).request?.httpBody)
         XCTAssertNotNil(TappEndpoint.tappEvent(eventRequest).request?.httpBody)
         XCTAssertNotNil(TappEndpoint.linkData(linkDataRequest).request?.httpBody)
-        XCTAssertNotNil(TappEndpoint.fingerpint(fingerPrint).request?.httpBody)
+        XCTAssertNotNil(TappEndpoint.touch(touch).request?.httpBody)
         XCTAssertNotNil(TappEndpoint.device(deviceRequest).request?.httpBody)
     }
 }
@@ -61,8 +61,8 @@ private extension TappEndpointTests {
         return TappLinkDataRequest(tappToken: tappToken, bundleID: bundleID, linkToken: linkToken)
     }
 
-    var fingerPrint: Fingerprint {
-        return Fingerprint.generate(tappToken: tappToken, webBody: nil, deviceID: nil)
+    var touch: Touch {
+        return Touch.generate(tappToken: tappToken, webBody: nil, deviceID: nil)
     }
 
     var deviceRequest: DeviceRequest {

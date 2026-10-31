@@ -12,7 +12,7 @@ enum TappAffiliateServiceError: Error {
     case decodingError
 }
 
-typealias FingerprintCompletion = (_ result: Result<FingerprintResponse, Error>) -> Void
+typealias TCCompletion = (_ result: Result<TCResponse, Error>) -> Void
 
 protocol TappAffiliateServiceProtocol: AffiliateServiceProtocol, TappServiceProtocol {}
 
@@ -338,16 +338,16 @@ private extension TappAffiliateService {
         }
     }
 
-    func sendFingerprint(message: WKScriptMessage, completion: FingerprintCompletion?) {
+    func sendTouch(message: WKScriptMessage, completion: TCCompletion?) {
         guard let config = keychainHelper.config else {
             completion?(Result.failure(TappServiceError.invalidData))
             return
         }
 
-        let fingerprint = Fingerprint.generate(tappToken: config.tappToken,
+        let tc = Touch.generate(tappToken: config.tappToken,
                                                webBody: message.body as? String,
                                                deviceID: deviceID)
-        let endpoint = TappEndpoint.fingerpint(fingerprint)
+        let endpoint = TappEndpoint.touch(tc)
         guard let request = endpoint.request else {
             completion?(Result.failure(TappServiceError.invalidRequest))
             return
@@ -358,7 +358,7 @@ private extension TappAffiliateService {
                 case .success(let data):
                 let decoder = JSONDecoder()
                 do {
-                    let response = try decoder.decode(FingerprintResponse.self, from: data)
+                    let response = try decoder.decode(TCResponse.self, from: data)
                     completion?(Result.success(response))
                 } catch {
                     completion?(Result.failure(error))
@@ -376,7 +376,7 @@ extension TappAffiliateService: WebLoaderDelegate {
     func didReceive(message: WKScriptMessage) {
         TappLog.logInfo(message: "Did receive web message", environment: keychainHelper.currentEnvironment, context: "Web Load")
         TappLog.logInfo(message: "Will attempt match", environment: keychainHelper.currentEnvironment, context: "Web Load")
-        sendFingerprint(message: message) { [weak self] result in
+        sendTouch(message: message) { [weak self] result in
             guard let self else { return }
             switch result {
             case .success(let response):
@@ -387,7 +387,7 @@ extension TappAffiliateService: WebLoaderDelegate {
                 TappLog.logInfo(message: "Will inform service delegate",
                                 environment: self.keychainHelper.currentEnvironment,
                                 context: "Device match")
-                self.affiliateServiceDelegate?.didReceive(fingerprintResponse: response)
+                self.affiliateServiceDelegate?.didReceive(tc: response)
             case .failure:
                 break
             }
@@ -420,7 +420,7 @@ extension URL {
 }
 
 private extension TappAffiliateService {
-    func updateConfiguration(response: FingerprintResponse) {
+    func updateConfiguration(response: TCResponse) {
         guard let config = keychainHelper.config else { return }
 
         if let url = response.tappURL {

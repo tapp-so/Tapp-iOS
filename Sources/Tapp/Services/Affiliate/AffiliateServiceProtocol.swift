@@ -6,7 +6,7 @@ public enum AffiliateServiceError: Error {
 }
 
 protocol AffiliateServiceDelegate: AnyObject {
-    func didReceive(fingerprintResponse: FingerprintResponse)
+    func didReceive(tc: TCResponse)
 }
 
 public protocol AffiliateServiceProtocol: AnyObject {
