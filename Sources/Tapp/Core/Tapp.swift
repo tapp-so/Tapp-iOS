@@ -43,9 +43,19 @@ public class Tapp: NSObject {
         let context = "Initialization"
 
         if let storedConfig = self.dependencies.keychainHelper.config {
-            if storedConfig.authToken != config.authToken || storedConfig.tappToken != config.tappToken {
+            let tokensChanged = storedConfig.authToken != config.authToken || storedConfig.tappToken != config.tappToken
+            let envChanged = storedConfig.env != config.env
+            let affiliateChanged = storedConfig.affiliate != config.affiliate
+
+            if tokensChanged || envChanged {
                 self.dependencies.keychainHelper.save(configuration: config)
-                TappLog.logInfo(message: "Did update config with new tokens",
+                TappLog.logInfo(message: "Did update config with new tokens or environment",
+                                environment: environment,
+                                context: context)
+            } else if affiliateChanged {
+                config.carryOverInstallState(from: storedConfig)
+                self.dependencies.keychainHelper.save(configuration: config)
+                TappLog.logInfo(message: "Did update config with new affiliate",
                                 environment: environment,
                                 context: context)
             }
@@ -406,6 +416,10 @@ internal extension Tapp {
             return
         }
 
+        TappLog.logInfo(message: "Will initialize affiliate service for affiliate: \(storedConfig.affiliate), env: \(storedConfig.env)",
+                        environment: environment,
+                        context: "Initialization (Affiliate Service)")
+
         service.initialize(environment: storedConfig.env, brandedURL: brandedURL) { [weak self] result in
             switch result {
             case .success:
@@ -583,6 +597,23 @@ extension Tapp: AffiliateServiceDelegate {
                         environment: environment,
                         context: context)
         delegate?.didOpenApplication?(with: linkData)
+    }
+}
+
+private extension TappConfiguration {
+    func carryOverInstallState(from stored: TappConfiguration) {
+        if let deviceID = stored.deviceID {
+            set(deviceID: deviceID)
+        }
+        set(deviceActive: stored.isDeviceActive)
+        set(isAlreadyVerified: stored.isAlreadyVerified)
+
+        if let originURL = stored.originURL {
+            set(originURL: originURL)
+        }
+        set(originAttributedTappURL: stored.originAttributedTappURL)
+        set(originInfluencer: stored.originInfluencer)
+        set(originData: stored.originData)
     }
 }
 

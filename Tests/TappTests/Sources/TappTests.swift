@@ -44,6 +44,79 @@ final class TappTests: XCTestCase {
         XCTAssertEqual(dependenciesHelper.keychainHelper.saveCalledCount, 0)
     }
 
+    // (a) Stored .tapp + incoming .adjust with the same tokens must switch to the Adjust service.
+    func testStartWithStoredTappAffiliateAndIncomingAdjustResolvesOverrideService() {
+        let queue = DispatchQueue(label: "testStartAffiliateChange")
+        let overrideSut = TappWithOverrideServiceMock(dependencies: dependenciesHelper.dependencies, dispatchQueue: queue)
+
+        let storedConfig = config
+        storedConfig.set(deviceID: "device123")
+        storedConfig.set(appToken: "oldTappSecret")
+        storedConfig.set(hasProcessedReferralEngine: true)
+        dependenciesHelper.keychainHelper.configObject = storedConfig
+        dependenciesHelper.tappAffiliateService.secretsResponse = SecretsResponse(secret: "adjustSecret", brandedURL: URL(string: "https://tapp.so")!)
+
+        let incomingConfig = TappConfiguration(authToken: "authToken123",
+                                               env: .sandbox,
+                                               tappToken: "tappToken123",
+                                               affiliate: .adjust,
+                                               bundleID: "bundleID123")
+
+        // Hold the engine queue so the synchronous part of start(config:) can be inspected first.
+        queue.suspend()
+        overrideSut.start(config: incomingConfig, delegate: tappDelegate)
+
+        XCTAssertEqual(dependenciesHelper.keychainHelper.saveCalledCount, 1)
+        XCTAssertEqual(dependenciesHelper.keychainHelper.config?.affiliate, .adjust)
+        XCTAssertEqual(dependenciesHelper.keychainHelper.config?.deviceID, "device123", "install identity survives an affiliate change")
+        XCTAssertNil(dependenciesHelper.keychainHelper.config?.appToken, "old affiliate secret is dropped")
+        XCTAssertFalse(dependenciesHelper.keychainHelper.config!.hasProcessedReferralEngine)
+        XCTAssertTrue(overrideSut.affiliateService === overrideSut.overrideServiceMock)
+
+        queue.resume()
+        queue.sync {}
+
+        XCTAssertEqual(dependenciesHelper.tappAffiliateService.secretsAffiliate, .adjust)
+        XCTAssertTrue(overrideSut.overrideServiceMock.initializeCalled)
+        XCTAssertFalse(dependenciesHelper.tappAffiliateService.initializeCalled)
+        XCTAssertEqual(dependenciesHelper.keychainHelper.config?.appToken, "adjustSecret")
+    }
+
+    // (b) An identical config (different instance) must not be re-saved.
+    func testStartWithUnchangedConfigDoesNotResave() {
+        let storedConfig = config
+        storedConfig.set(deviceID: "device123")
+        dependenciesHelper.keychainHelper.configObject = storedConfig
+
+        sut.start(config: config, delegate: tappDelegate)
+
+        XCTAssertEqual(dependenciesHelper.keychainHelper.saveCalledCount, 0)
+        XCTAssertTrue(dependenciesHelper.keychainHelper.config === storedConfig)
+        XCTAssertEqual(dependenciesHelper.keychainHelper.config?.deviceID, "device123")
+        XCTAssertTrue(sut.affiliateService === dependenciesHelper.tappAffiliateService)
+    }
+
+    // (c) A token change still replaces the stored config outright, as before.
+    func testStartWithChangedTokensResaves() {
+        let storedConfig = config
+        storedConfig.set(deviceID: "device123")
+        dependenciesHelper.keychainHelper.configObject = storedConfig
+
+        let incomingConfig = TappConfiguration(authToken: "newAuthToken",
+                                               env: .sandbox,
+                                               tappToken: "newTappToken",
+                                               affiliate: .tapp,
+                                               bundleID: "bundleID123")
+
+        sut.start(config: incomingConfig, delegate: tappDelegate)
+
+        XCTAssertEqual(dependenciesHelper.keychainHelper.saveCalledCount, 1)
+        XCTAssertTrue(dependenciesHelper.keychainHelper.config === incomingConfig)
+        XCTAssertEqual(dependenciesHelper.keychainHelper.config?.authToken, "newAuthToken")
+        XCTAssertEqual(dependenciesHelper.keychainHelper.config?.tappToken, "newTappToken")
+        XCTAssertNil(dependenciesHelper.keychainHelper.config?.deviceID)
+    }
+
     func testInitializeEngineWithMissingConfiguration() {
         sut.initializeEngine { result in
             switch result {

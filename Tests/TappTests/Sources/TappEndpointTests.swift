@@ -25,7 +25,7 @@ final class TappEndpointTests: XCTestCase {
         XCTAssertEqual(TappEndpoint.secrets(secretsRequest).path, APIPath.secrets.rawValue)
         XCTAssertEqual(TappEndpoint.tappEvent(eventRequest).path, APIPath.event.rawValue)
         XCTAssertEqual(TappEndpoint.linkData(linkDataRequest).path, APIPath.linkData.rawValue)
-        XCTAssertEqual(TappEndpoint.touch(touch).path, APIPath.tc.rawValue)
+        XCTAssertEqual(TappEndpoint.touch(touch).path, APIPath.touch.rawValue)
         XCTAssertEqual(TappEndpoint.device(deviceRequest).path, APIPath.device.rawValue)
     }
 
