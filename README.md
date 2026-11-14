@@ -61,6 +61,21 @@ Or in `Package.swift`:
 ]
 ```
 
+### CocoaPods
+
+Swift Package Manager is the primary install path; CocoaPods is also supported. CocoaPods releases after 1.1.24 are published only to [tapp-so/Specs](https://github.com/tapp-so/Specs).
+
+Add both source lines at the top of your `Podfile`, in this order, then the pod:
+
+```ruby
+source 'https://github.com/tapp-so/Specs.git'   # must come first
+source 'https://cdn.cocoapods.org/'
+
+pod 'Tapp'
+```
+
+Both source lines are required, in this order. Once a Podfile declares any source, CocoaPods stops adding trunk automatically, so the CDN line is needed for other pods.
+
 ## Quick Start
 
 1. **Import and configure** in your `AppDelegate` (or `SceneDelegate` if preferred):
