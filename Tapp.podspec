@@ -5,7 +5,7 @@ Pod::Spec.new do |spec|
   spec.homepage      = 'https://github.com/tapp-so/Tapp-iOS'
   spec.authors       = { 'Alex Stergiou' => 'alex@tapp.so' }
   spec.summary       = 'TappSDK.'
-  spec.source        = { :git => 'https://github.com/tapp-so/Tapp-iOS.git', :tag => '1.1.24' }
+  spec.source        = { :git => 'https://github.com/tapp-so/Tapp-iOS.git', :tag => spec.version.to_s }
   spec.module_name   = 'Tapp'
   spec.swift_version = '5.7'
   spec.license       = { :type => 'MIT', :file => 'LICENSE.md' }
